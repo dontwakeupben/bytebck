@@ -1,0 +1,58 @@
+// ByteBack - A platform for sharing computer hardware guides
+// Main application entry point that sets up the app theme and routing
+
+import 'package:byteback2/screens/create_guide_screen.dart';
+import 'package:flutter/material.dart';
+import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
+import 'screens/forgot_password_screen.dart';
+import 'screens/email_sent_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/feed_screen.dart';
+import 'screens/library_screen.dart';
+import 'screens/premium_screen.dart';
+import 'screens/profile_screen.dart';
+// import other screens as you create them
+
+void main() {
+  runApp(const MyApp());
+}
+
+/// Root widget of the ByteBack application
+/// Configures the app theme and routing system
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'ByteBack',
+      // Configure app-wide theme settings
+      theme: ThemeData(
+        fontFamily: 'CenturyGo', // Custom font for consistent typography
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF233C23),
+        ), // Primary brand color
+        useMaterial3: true, // Enable Material 3 design system
+      ),
+      initialRoute: '/', // Start with splash screen
+      // Define named routes for navigation
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
+        '/forgot': (context) => const ForgotPasswordScreen(),
+        '/email-sent': (context) => const EmailSentScreen(),
+        '/home': (context) => const HomeScreen(),
+        '/feed': (context) => const FeedScreen(),
+        '/library': (context) => const LibraryScreen(),
+        '/premium': (context) => const PremiumScreen(),
+        '/profile': (context) => const ProfileScreen(),
+        '/create': (context) => const CreateGuideScreen(),
+        // Add other routes here as you implement them
+      },
+    );
+  }
+}
