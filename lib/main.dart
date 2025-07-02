@@ -1,8 +1,12 @@
 // ByteBack - A platform for sharing computer hardware guides
 // Main application entry point that sets up the app theme and routing
 
+import 'package:byteback2/firebase_options.dart';
 import 'package:byteback2/screens/create_guide_screen.dart';
+import 'package:byteback2/services/firebase_service.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -15,7 +19,10 @@ import 'screens/premium_screen.dart';
 import 'screens/profile_screen.dart';
 // import other screens as you create them
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  GetIt.instance.registerLazySingleton(() => FirebaseService());
   runApp(const MyApp());
 }
 
