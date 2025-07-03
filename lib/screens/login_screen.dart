@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../services/firebase_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,6 +12,39 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _passwordVisible = false;
   final _formKey = GlobalKey<FormState>();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  String? _authError;
+  final FirebaseService _firebaseService = FirebaseService();
+
+  void login(context) async {
+    try {
+      await _firebaseService.login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      Navigator.pushReplacementNamed(context, '/home');
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.code)));
+    }
+  }
+
+  void googleLogin(context) async {
+    try {
+      await _firebaseService.signInWithGoogle();
+
+      Navigator.pushReplacementNamed(context, '/home');
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.code)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -22,7 +57,6 @@ class _LoginScreenState extends State<LoginScreen> {
             color: const Color(0xFFF8F5E3),
             borderRadius: BorderRadius.circular(28),
           ),
-
           child: Form(
             key: _formKey,
             child: Column(
@@ -45,8 +79,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextFormField(
+                        controller: _emailController,
                         decoration: InputDecoration(
-                          hintText: 'Username',
+                          hintText: 'Email',
                           hintStyle: TextStyle(
                             fontFamily: 'CenturyGo',
                             color: Colors.grey[500],
@@ -54,7 +89,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter some text';
+                            return 'Please enter your email';
+                          }
+                          if (!RegExp(
+                            r'^[^@]+@[^@]+\.[^@]+$',
+                          ).hasMatch(value)) {
+                            return 'Please enter a valid email';
                           }
                           return null;
                         },
@@ -68,9 +108,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const Icon(Icons.lock_outline, size: 28),
                     const SizedBox(width: 8),
-
                     Expanded(
                       child: TextFormField(
+                        controller: _passwordController,
                         obscureText: !_passwordVisible,
                         decoration: InputDecoration(
                           hintText: 'Password',
@@ -106,6 +146,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
+                if (_authError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      _authError!,
+                      style: const TextStyle(color: Colors.red, fontSize: 14),
+                    ),
+                  ),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton(
@@ -120,12 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
-                      // If the form is valid, display a snackbar. In the real world,
-                      // you'd often call a server or save the information in a database.
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Processing Data')),
-                      );
-                      Navigator.pushReplacementNamed(context, '/home');
+                      login(context);
                     }
                   },
                   style: ElevatedButton.styleFrom(
@@ -147,8 +190,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.pushReplacementNamed(context, '/home');
+                    googleLogin(context);
                   },
+
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
