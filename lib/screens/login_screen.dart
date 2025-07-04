@@ -90,6 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF233C23),
+      resizeToAvoidBottomInset: false, // Prevents widget push-up
       body: Center(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
