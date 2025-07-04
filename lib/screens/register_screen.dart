@@ -101,6 +101,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 4),
                   TextFormField(
                     controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: const Color.fromARGB(255, 207, 195, 190),
@@ -136,6 +137,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: !_passwordVisible,
+                    keyboardType: TextInputType.visiblePassword,
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: const Color.fromARGB(255, 207, 195, 190),
@@ -184,6 +186,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextFormField(
                     controller: _confirmPasswordController,
                     obscureText: !_confirmPasswordVisible,
+                    keyboardType: TextInputType.visiblePassword,
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: const Color.fromARGB(255, 207, 195, 190),

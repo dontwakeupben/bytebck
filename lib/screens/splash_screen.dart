@@ -1,3 +1,4 @@
+import 'package:byteback2/screens/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 
@@ -23,6 +24,7 @@ class _SplashScreenState extends State<SplashScreen>
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
     Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
       Navigator.of(context).pushReplacementNamed('/login');
     });
   }

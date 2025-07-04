@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/firebase_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -10,6 +11,32 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  void githubLogin(context) async {
+    try {
+      await _firebaseService.signInWithGitHub();
+      if (_firebaseService.getCurrentUser() == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("GitHub sign-in failed")));
+        return;
+      } else {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Auth error: ${e.code}")));
+    } on PlatformException catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Platform error: ${e.code}")));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Unexpected error: $e")));
+    }
+  }
+
   bool _passwordVisible = false;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
@@ -36,12 +63,26 @@ class _LoginScreenState extends State<LoginScreen> {
   void googleLogin(context) async {
     try {
       await _firebaseService.signInWithGoogle();
-
-      Navigator.pushReplacementNamed(context, '/home');
+      if (_firebaseService.getCurrentUser() == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Google sign-in failed")));
+        return;
+      } else {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.code)));
+      ).showSnackBar(SnackBar(content: Text("Auth error: ${e.code}")));
+    } on PlatformException catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Platform error: ${e.code}")));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Unexpected error: $e")));
     }
   }
 
@@ -80,6 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
                           hintText: 'Email',
                           hintStyle: TextStyle(
@@ -112,6 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: TextFormField(
                         controller: _passwordController,
                         obscureText: !_passwordVisible,
+                        keyboardType: TextInputType.visiblePassword,
                         decoration: InputDecoration(
                           hintText: 'Password',
                           hintStyle: TextStyle(
@@ -213,6 +256,35 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       SizedBox(width: 8),
                       Image.asset('images/google.png', width: 28, height: 28),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    githubLogin(context);
+                  },
+
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Sign in with ',
+                        style: TextStyle(
+                          fontFamily: 'CenturyGo',
+                          fontSize: 20,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Image.asset('images/github.png', width: 28, height: 28),
                     ],
                   ),
                 ),

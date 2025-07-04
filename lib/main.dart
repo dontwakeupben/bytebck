@@ -4,6 +4,7 @@
 import 'package:byteback2/firebase_options.dart';
 import 'package:byteback2/screens/create_guide_screen.dart';
 import 'package:byteback2/services/firebase_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
@@ -23,42 +24,51 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   GetIt.instance.registerLazySingleton(() => FirebaseService());
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 /// Root widget of the ByteBack application
 /// Configures the app theme and routing system
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  FirebaseService fbService = GetIt.instance<FirebaseService>();
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'ByteBack',
-      // Configure app-wide theme settings
-      theme: ThemeData(
-        fontFamily: 'CenturyGo', // Custom font for consistent typography
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF233C23),
-        ), // Primary brand color
-        useMaterial3: true, // Enable Material 3 design system
-      ),
-      initialRoute: '/', // Start with splash screen
-      // Define named routes for navigation
-      routes: {
-        '/': (context) => const SplashScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/forgot': (context) => const ForgotPasswordScreen(),
-        '/email-sent': (context) => const EmailSentScreen(),
-        '/home': (context) => const HomeScreen(),
-        '/feed': (context) => const FeedScreen(),
-        '/library': (context) => const LibraryScreen(),
-        '/premium': (context) => const PremiumScreen(),
-        '/profile': (context) => const ProfileScreen(),
-        '/create': (context) => const CreateGuideScreen(),
-        // Add other routes here as you implement them
+    return StreamBuilder<User?>(
+      stream: fbService.getAuthUser(),
+      builder: (context, snapshot) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'ByteBack',
+          // Configure app-wide theme settings
+          theme: ThemeData(
+            fontFamily: 'CenturyGo', // Custom font for consistent typography
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF233C23),
+            ), // Primary brand color
+            useMaterial3: true, // Enable Material 3 design system
+          ),
+          // Use home instead of initialRoute to react to auth state
+          home:
+              snapshot.connectionState == ConnectionState.waiting
+                  ? const SplashScreen()
+                  : (snapshot.hasData
+                      ? const HomeScreen()
+                      : const SplashScreen()),
+          routes: {
+            '/login': (context) => const LoginScreen(),
+            '/register': (context) => const RegisterScreen(),
+            '/forgot': (context) => const ForgotPasswordScreen(),
+            '/email-sent': (context) => const EmailSentScreen(),
+            '/home': (context) => const HomeScreen(),
+            '/feed': (context) => const FeedScreen(),
+            '/library': (context) => const LibraryScreen(),
+            '/premium': (context) => const PremiumScreen(),
+            '/profile': (context) => const ProfileScreen(),
+            '/create': (context) => const CreateGuideScreen(),
+            // Add other routes here as you implement them
+          },
+        );
       },
     );
   }

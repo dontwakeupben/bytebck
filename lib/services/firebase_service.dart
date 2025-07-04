@@ -3,6 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class FirebaseService {
+  // Send email verification to the current user
+  Future<void> sendEmailVerification() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.emailVerified) {
+      await user.sendEmailVerification();
+    }
+  }
+
   Future<dynamic> signInWithGoogle() async {
     try {
       GoogleSignInAccount? googleUser =
@@ -50,5 +58,16 @@ class FirebaseService {
 
   Future<void> forgotPassword(email) {
     return FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+  }
+
+  Future<UserCredential?> signInWithGitHub() async {
+    try {
+      GithubAuthProvider githubProvider = GithubAuthProvider();
+
+      return await FirebaseAuth.instance.signInWithProvider(githubProvider);
+    } catch (e) {
+      debugPrint('GitHub Sign-In failed: $e');
+      return null;
+    }
   }
 }

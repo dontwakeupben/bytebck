@@ -1,4 +1,7 @@
+import 'package:byteback2/services/firebase_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -8,6 +11,27 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  // Helper to check if email is verified
+  bool get isEmailVerified {
+    final user = FirebaseAuth.instance.currentUser;
+    return user?.emailVerified ?? false;
+  }
+
+  // Send verification email and show feedback
+  Future<void> sendVerificationEmail() async {
+    try {
+      await fbService.sendEmailVerification();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Verification email sent!')));
+      setState(() {}); // Refresh UI in case user verifies
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error sending verification: $e')));
+    }
+  }
+
   bool _passwordVisible = false;
   bool _isDarkMode = false;
   // Function to show a confirmation dialog when saving changes
@@ -67,6 +91,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  FirebaseService fbService = GetIt.instance<FirebaseService>();
+  void logout(context) async {
+    try {
+      await fbService.logOut();
+      Navigator.of(context).pushReplacementNamed("/");
+      FocusScope.of(context).unfocus();
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User logged out successfully!')),
+      );
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/login',
+        (route) => false, // Remove all previous routes
+      );
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.code)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,6 +168,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Email verification button (only if not verified)
+                      if (!isEmailVerified)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: ElevatedButton.icon(
+                            onPressed: sendVerificationEmail,
+                            icon: const Icon(
+                              Icons.verified,
+                              color: Colors.blue,
+                            ),
+                            label: const Text(
+                              'Verify Email',
+                              style: TextStyle(
+                                fontFamily: 'CenturyGo',
+                                color: Colors.blue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 16),
                       Align(
                         alignment: Alignment(-0.97, -0.94),
@@ -223,7 +295,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 24),
                       ElevatedButton(
                         onPressed: () {
-                          Navigator.pushNamed(context, '/login');
+                          logout(context);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.brown[200],

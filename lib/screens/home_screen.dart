@@ -1,10 +1,19 @@
+import 'package:byteback2/services/firebase_service.dart';
 import 'package:flutter/material.dart';
 import 'package:byteback2/widgets/device_button.dart';
 import 'package:byteback2/widgets/custom_bot_nav.dart';
 import 'package:byteback2/screens/feed_screen.dart';
+import 'package:get_it/get_it.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  FirebaseService fbService = GetIt.instance<FirebaseService>();
 
   void _navigateToFeedWithFilter(BuildContext context, String device) {
     Navigator.pushReplacement(
@@ -62,15 +71,20 @@ class HomeScreen extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                  const Text(
-                    'benbeanballer',
-                    style: TextStyle(
-                      fontFamily: 'CenturyGo',
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  fbService.getCurrentUser() == null
+                      ? const Text("Hello Friend!")
+                      : FittedBox(
+                        child: Text(
+                          "Hello " + fbService.getCurrentUser()!.email! + "!",
+                          style: TextStyle(
+                            fontFamily: 'CenturyGo',
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+
                   const SizedBox(height: 24),
                   const Text(
                     'What device would you like to find for?',
