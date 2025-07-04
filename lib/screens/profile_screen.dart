@@ -103,13 +103,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
       Navigator.pushNamedAndRemoveUntil(
         context,
-        '/login',
+        '/',
         (route) => false, // Remove all previous routes
       );
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(e.code)));
+    }
+  }
+
+  void deleteAccount(context) async {
+    final result = await fbService.deleteCurrentUser();
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Account deleted successfully.')),
+      );
+      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result)));
     }
   }
 
@@ -365,15 +379,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                   ),
                                   TextButton(
-                                    onPressed: () {
-                                      Navigator.of(
-                                        context,
-                                      ).pop(); // Close dialog
-                                      Navigator.pushNamedAndRemoveUntil(
-                                        context,
-                                        '/login',
-                                        (route) => false, // Remove all routes
-                                      );
+                                    onPressed: () async {
+                                      deleteAccount(context);
                                     },
                                     child: const Text(
                                       'Delete Account',

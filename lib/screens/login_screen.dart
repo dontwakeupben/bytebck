@@ -11,32 +11,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  void githubLogin(context) async {
-    try {
-      await _firebaseService.signInWithGitHub();
-      if (_firebaseService.getCurrentUser() == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("GitHub sign-in failed")));
-        return;
-      } else {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Auth error: ${e.code}")));
-    } on PlatformException catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Platform error: ${e.code}")));
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Unexpected error: $e")));
-    }
-  }
-
   bool _passwordVisible = false;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
@@ -263,7 +237,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    githubLogin(context);
+                    Navigator.pushNamed(context, '/phone_otp');
                   },
 
                   style: ElevatedButton.styleFrom(
@@ -277,7 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text(
-                        'Sign in with ',
+                        'Sign in with Phone Number',
                         style: TextStyle(
                           fontFamily: 'CenturyGo',
                           fontSize: 20,
@@ -285,7 +259,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       SizedBox(width: 8),
-                      Image.asset('images/github.png', width: 28, height: 28),
                     ],
                   ),
                 ),

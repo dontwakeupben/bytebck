@@ -71,19 +71,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.white,
                     ),
                   ),
-                  fbService.getCurrentUser() == null
-                      ? const Text("Hello Friend!")
-                      : FittedBox(
-                        child: Text(
-                          "Hello " + fbService.getCurrentUser()!.email! + "!",
-                          style: TextStyle(
-                            fontFamily: 'CenturyGo',
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
+                  (() {
+                    final user = fbService.getCurrentUser();
+                    if (user == null) {
+                      return const Text("Hello Friend!");
+                    }
+                    final email = user.email;
+                    return FittedBox(
+                      child: Text(
+                        "Hello " + (email ?? "User") + "!",
+                        style: const TextStyle(
+                          fontFamily: 'CenturyGo',
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
+                    );
+                  })(),
 
                   const SizedBox(height: 24),
                   const Text(
