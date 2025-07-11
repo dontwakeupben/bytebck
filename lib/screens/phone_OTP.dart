@@ -1,6 +1,8 @@
 import 'package:byteback2/services/firebase_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:byteback2/screens/link_email_screen.dart';
 
 class PhoneOtp extends StatefulWidget {
   const PhoneOtp({super.key});
@@ -50,7 +52,14 @@ class _PhoneOtpState extends State<PhoneOtp> {
     );
     setState(() => _loading = false);
     if (result == null) {
-      Navigator.pushReplacementNamed(context, '/home');
+      if (FirebaseAuth.instance.currentUser?.email == null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => LinkEmailScreen()),
+        );
+      } else {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } else {
       ScaffoldMessenger.of(
         context,
@@ -107,7 +116,7 @@ class _PhoneOtpState extends State<PhoneOtp> {
                   const SizedBox(height: 20),
                   Text(
                     _codeSent
-                        ? 'Enter the 6-digit code sent to\n${_phoneController.text}'
+                        ? 'Enter the 6-digit code sent to\n+65${_phoneController.text}'
                         : 'Enter your phone number to receive\na verification code',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
@@ -132,12 +141,13 @@ class _PhoneOtpState extends State<PhoneOtp> {
                                     LengthLimitingTextInputFormatter(6),
                                   ],
                                   decoration: const InputDecoration(
+                                    errorBorder: UnderlineInputBorder(),
+                                    border: UnderlineInputBorder(),
                                     hintText: 'Enter 6-digit code',
                                     hintStyle: TextStyle(
                                       fontFamily: 'CenturyGo',
                                       color: Colors.grey,
                                     ),
-                                    border: InputBorder.none,
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
@@ -163,12 +173,13 @@ class _PhoneOtpState extends State<PhoneOtp> {
                                     LengthLimitingTextInputFormatter(8),
                                   ],
                                   decoration: const InputDecoration(
+                                    errorBorder: UnderlineInputBorder(),
+                                    border: UnderlineInputBorder(),
                                     hintText: 'Phone Number (e.g., 12345678)',
                                     hintStyle: TextStyle(
                                       fontFamily: 'CenturyGo',
                                       color: Colors.grey,
                                     ),
-                                    border: InputBorder.none,
                                     prefixText: '+65 ',
                                     prefixStyle: TextStyle(
                                       fontFamily: 'CenturyGo',
@@ -191,7 +202,6 @@ class _PhoneOtpState extends State<PhoneOtp> {
                       ),
                     ],
                   ),
-                  const Divider(),
                   const SizedBox(height: 100),
                   Center(
                     child: SizedBox(

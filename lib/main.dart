@@ -3,6 +3,7 @@
 
 import 'package:byteback2/firebase_options.dart';
 import 'package:byteback2/screens/create_guide_screen.dart';
+import 'package:byteback2/screens/link_email_screen.dart';
 import 'package:byteback2/screens/phone_OTP.dart';
 import 'package:byteback2/services/firebase_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -68,6 +69,7 @@ class MyApp extends StatelessWidget {
             '/profile': (context) => const ProfileScreen(),
             '/create': (context) => const CreateGuideScreen(),
             '/phone_otp': (context) => const PhoneOtp(),
+            '/link_email': (context) => LinkEmailScreen(),
             // Add other routes here as you implement them
           },
         );
