@@ -16,6 +16,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _confirmPasswordVisible = false;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
@@ -87,6 +89,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Image.asset('images/logo.png', width: 140),
 
                   const SizedBox(height: 34),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Name',
+                      style: TextStyle(
+                        fontFamily: 'CenturyGo',
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  TextFormField(
+                    controller: _nameController,
+                    keyboardType: TextInputType.name,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: const Color.fromARGB(255, 207, 195, 190),
+                      hintText: '',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    style: const TextStyle(fontFamily: 'CenturyGo'),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your name';
+                      }
+                      if (!RegExp(r"^[a-zA-Z ,.'-]{2,}$").hasMatch(value)) {
+                        return 'Please enter a valid name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
 
                   Align(
                     alignment: Alignment.centerLeft,

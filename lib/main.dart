@@ -20,6 +20,7 @@ import 'screens/feed_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/premium_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/set_password.dart';
 // import other screens as you create them
 
 void main() async {
@@ -70,6 +71,7 @@ class MyApp extends StatelessWidget {
             '/create': (context) => const CreateGuideScreen(),
             '/phone_otp': (context) => const PhoneOtp(),
             '/link_email': (context) => LinkEmailScreen(),
+            '/set_password': (context) => SetPasswordScreen(),
             // Add other routes here as you implement them
           },
         );

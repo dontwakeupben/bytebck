@@ -11,6 +11,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
+
   // Helper to check if email is verified
 
   bool get isEmailVerified {
@@ -37,59 +39,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isDarkMode = false;
   // Function to show a confirmation dialog when saving changes
   void _showSaveConfirmation() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFFF8F5E3),
-          title: const Text(
-            'Save Changes',
-            style: TextStyle(
-              fontFamily: 'CenturyGo',
-              color: Color(0xFF233C23),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: const Text(
-            'Are you sure you want to save these changes?',
-            style: TextStyle(fontFamily: 'CenturyGo', color: Color(0xFF233C23)),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  fontFamily: 'CenturyGo',
-                  color: Color(0xFF233C23),
-                ),
+    if (_formKey.currentState?.validate() ?? false) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFFF8F5E3),
+            title: const Text(
+              'Save Changes',
+              style: TextStyle(
+                fontFamily: 'CenturyGo',
+                color: Color(0xFF233C23),
+                fontWeight: FontWeight.bold,
               ),
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Changes saved successfully'),
-                    backgroundColor: Color(0xFF233C23),
+            content: const Text(
+              'Are you sure you want to save these changes?',
+              style: TextStyle(
+                fontFamily: 'CenturyGo',
+                color: Color(0xFF233C23),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Changes saved successfully')),
+                  );
+                },
+                child: const Text(
+                  'Save',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
                   ),
-                );
-              },
-              child: const Text(
-                'Save',
-                style: TextStyle(
-                  fontFamily: 'CenturyGo',
-                  color: Colors.green,
-                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-          ],
-        );
-      },
-    );
+            ],
+          );
+        },
+      );
+    }
   }
 
   FirebaseService fbService = GetIt.instance<FirebaseService>();
@@ -132,6 +127,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = fbService.getCurrentUser();
     final email = user?.email;
+    final _nameController = TextEditingController(text: 'ben angelo');
+    final _emailController = TextEditingController(text: email ?? "User");
+    final _passwordController = TextEditingController(text: 'ballslicker32');
+
     return Scaffold(
       backgroundColor: const Color(0xFF233C23),
       body: SafeArea(
@@ -182,262 +181,353 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: const Color(0xFFF8F5E3),
                     borderRadius: BorderRadius.circular(28),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Email verification button (only if not verified)
-                      if (!isEmailVerified)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
-                          child: ElevatedButton.icon(
-                            onPressed: sendVerificationEmail,
-                            icon: const Icon(
-                              Icons.verified,
-                              color: Colors.blue,
-                            ),
-                            label: const Text(
-                              'Verify Email',
-                              style: TextStyle(
-                                fontFamily: 'CenturyGo',
-                                color: Colors.blue,
-                                fontWeight: FontWeight.bold,
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Email verification button (only if not verified)
+                        if (!isEmailVerified)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: ElevatedButton.icon(
+                              onPressed: sendVerificationEmail,
+                              icon: const Icon(
+                                Icons.verified,
+                                color: const Color(0xFF233C23),
                               ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment(-0.97, -0.94),
-                        child: Text(
-                          'Name',
-                          style: TextStyle(
-                            fontFamily: 'CenturyGo',
-                            fontSize: 16,
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-
-                      _ProfileField(value: 'ben angelo', isPassword: false),
-                      const SizedBox(height: 24),
-
-                      Align(
-                        alignment: Alignment(-0.97, 1),
-                        child: Text(
-                          'Email',
-                          style: TextStyle(
-                            fontFamily: 'CenturyGo',
-                            fontSize: 16,
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-
-                      _ProfileField(value: email ?? "User", isPassword: false),
-                      const SizedBox(height: 24),
-                      Align(
-                        alignment: Alignment(-0.97, 1),
-                        child: Text(
-                          'Password',
-                          style: TextStyle(
-                            fontFamily: 'CenturyGo',
-                            fontSize: 16,
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-
-                      _ProfileField(
-                        value: 'ballslicker32',
-                        isPassword: true,
-                        passwordVisible: _passwordVisible,
-                        onTogglePassword: () {
-                          setState(() {
-                            _passwordVisible = !_passwordVisible;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 32),
-                      ElevatedButton(
-                        onPressed: _showSaveConfirmation,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[600],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: const Text(
-                          'Save Changes',
-                          style: TextStyle(
-                            fontFamily: 'CenturyGo',
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/premium');
-                        },
-                        icon: const Icon(Icons.star, color: Colors.black),
-                        label: const Text(
-                          'Upgrade to Premium',
-                          style: TextStyle(
-                            fontFamily: 'CenturyGo',
-                            color: Colors.black,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD1B3E0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () {
-                          logout(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.brown[200],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-
-                        child: const Text(
-                          'Log Out',
-                          style: TextStyle(
-                            fontFamily: 'CenturyGo',
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () {
-                          // Show confirmation dialog before deleting account
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                backgroundColor: const Color(0xFFF8F5E3),
-                                title: const Text(
-                                  'Delete Account',
-                                  style: TextStyle(
-                                    fontFamily: 'CenturyGo',
-                                    color: Color(0xFF233C23),
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              label: const Text(
+                                'Verify Email',
+                                style: TextStyle(
+                                  fontFamily: 'CenturyGo',
+                                  color: const Color(0xFF233C23),
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                content: const Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Are you sure you want to delete your account?',
-                                      style: TextStyle(
-                                        fontFamily: 'CenturyGo',
-                                        color: Color(0xFF233C23),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 16),
+                        Align(
+                          alignment: Alignment(-0.97, -0.94),
+                          child: Text(
+                            'Name',
+                            style: TextStyle(
+                              fontFamily: 'CenturyGo',
+                              fontSize: 16,
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            hintText: 'Enter your name',
+                            filled: true,
+                            fillColor: Colors.brown[200],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.fromLTRB(
+                              12,
+                              28,
+                              12,
+                              12,
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Name is required';
+                            }
+                            return null;
+                          },
+                          style: const TextStyle(fontFamily: 'CenturyGo'),
+                        ),
+                        const SizedBox(height: 24),
+
+                        Align(
+                          alignment: Alignment(-0.97, 1),
+                          child: Text(
+                            'Email',
+                            style: TextStyle(
+                              fontFamily: 'CenturyGo',
+                              fontSize: 16,
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+
+                        TextFormField(
+                          controller: _emailController,
+                          decoration: InputDecoration(
+                            hintText: 'Enter your email',
+                            filled: true,
+                            fillColor: Colors.brown[200],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.fromLTRB(
+                              12,
+                              28,
+                              12,
+                              12,
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Email is required';
+                            }
+                            if (!RegExp(
+                              r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$',
+                            ).hasMatch(value)) {
+                              return 'Enter a valid email';
+                            }
+                            return null;
+                          },
+                          style: const TextStyle(fontFamily: 'CenturyGo'),
+                        ),
+
+                        const SizedBox(height: 24),
+                        Align(
+                          alignment: Alignment(-0.97, 1),
+                          child: Text(
+                            'Password',
+                            style: TextStyle(
+                              fontFamily: 'CenturyGo',
+                              fontSize: 16,
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: !_passwordVisible,
+                          decoration: InputDecoration(
+                            hintText: 'Enter your password',
+                            filled: true,
+                            fillColor: Colors.brown[200],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.fromLTRB(
+                              12,
+                              28,
+                              12,
+                              12,
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _passwordVisible
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                                color: Colors.black54,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _passwordVisible = !_passwordVisible;
+                                });
+                              },
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Password is required';
+                            }
+                            if (value.length < 6) {
+                              return 'Password must be at least 6 characters';
+                            }
+                            return null;
+                          },
+                          style: const TextStyle(fontFamily: 'CenturyGo'),
+                        ),
+
+                        const SizedBox(height: 32),
+                        ElevatedButton(
+                          onPressed: _showSaveConfirmation,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green[600],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Text(
+                            'Save Changes',
+                            style: TextStyle(
+                              fontFamily: 'CenturyGo',
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/premium');
+                          },
+                          icon: const Icon(Icons.star, color: Colors.black),
+                          label: const Text(
+                            'Upgrade to Premium',
+                            style: TextStyle(
+                              fontFamily: 'CenturyGo',
+                              color: Colors.black,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD1B3E0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: () {
+                            logout(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.brown[200],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+
+                          child: const Text(
+                            'Log Out',
+                            style: TextStyle(
+                              fontFamily: 'CenturyGo',
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: () {
+                            // Show confirmation dialog before deleting account
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  backgroundColor: const Color(0xFFF8F5E3),
+                                  title: const Text(
+                                    'Delete Account',
+                                    style: TextStyle(
+                                      fontFamily: 'CenturyGo',
+                                      color: Color(0xFF233C23),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  content: const Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Are you sure you want to delete your account?',
+                                        style: TextStyle(
+                                          fontFamily: 'CenturyGo',
+                                          color: Color(0xFF233C23),
+                                        ),
+                                      ),
+                                      SizedBox(height: 12),
+                                      Text(
+                                        'This action cannot be undone.',
+                                        style: TextStyle(
+                                          fontFamily: 'CenturyGo',
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: const Text(
+                                        'Cancel',
+                                        style: TextStyle(
+                                          fontFamily: 'CenturyGo',
+                                          color: Color(0xFF233C23),
+                                        ),
                                       ),
                                     ),
-                                    SizedBox(height: 12),
-                                    Text(
-                                      'This action cannot be undone.',
-                                      style: TextStyle(
-                                        fontFamily: 'CenturyGo',
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.w500,
+                                    TextButton(
+                                      onPressed: () async {
+                                        deleteAccount(context);
+                                      },
+                                      child: const Text(
+                                        'Delete Account',
+                                        style: TextStyle(
+                                          fontFamily: 'CenturyGo',
+                                          color: Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ],
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
-                                    child: const Text(
-                                      'Cancel',
-                                      style: TextStyle(
-                                        fontFamily: 'CenturyGo',
-                                        color: Color(0xFF233C23),
-                                      ),
-                                    ),
-                                  ),
-                                  TextButton(
-                                    onPressed: () async {
-                                      deleteAccount(context);
-                                    },
-                                    child: const Text(
-                                      'Delete Account',
-                                      style: TextStyle(
-                                        fontFamily: 'CenturyGo',
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red[900],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                                );
+                              },
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red[900],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
-                        ),
 
-                        child: const Text(
-                          'Delete Account',
-                          style: TextStyle(
-                            fontFamily: 'CenturyGo',
-                            color: Colors.white,
+                          child: const Text(
+                            'Delete Account',
+                            style: TextStyle(
+                              fontFamily: 'CenturyGo',
+                              color: Colors.white,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Text(
-                              'Joined',
-                              style: TextStyle(
-                                fontFamily: 'CenturyGo',
-                                fontSize: 12,
-                                color: Colors.black,
+                        const SizedBox(height: 16),
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Text(
+                                'Joined',
+                                style: TextStyle(
+                                  fontFamily: 'CenturyGo',
+                                  fontSize: 12,
+                                  color: Colors.black,
+                                ),
                               ),
-                            ),
-                            Text(
-                              '27 / 7 / 2024',
-                              style: TextStyle(
-                                fontFamily: 'CenturyGo',
-                                fontSize: 12,
-                                color: Colors.black,
+                              Text(
+                                '27 / 7 / 2024',
+                                style: TextStyle(
+                                  fontFamily: 'CenturyGo',
+                                  fontSize: 12,
+                                  color: Colors.black,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -570,58 +660,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
-    );
-  }
-}
-
-// Widget for profile fields with optional password visibility toggle
-class _ProfileField extends StatelessWidget {
-  final String value;
-  final bool isPassword;
-  final bool? passwordVisible;
-  final VoidCallback? onTogglePassword;
-
-  const _ProfileField({
-    required this.value,
-    this.isPassword = false,
-    this.passwordVisible,
-    this.onTogglePassword,
-  });
-
-  @override
-  // Build method for the profile field widget
-  Widget build(BuildContext context) {
-    return TextField(
-      obscureText: isPassword && !(passwordVisible ?? false),
-      decoration: InputDecoration(
-        floatingLabelBehavior: FloatingLabelBehavior.always,
-        labelStyle: const TextStyle(
-          fontFamily: 'CenturyGo',
-          color: Colors.black,
-          fontWeight: FontWeight.bold,
-        ),
-        filled: true,
-        fillColor: Colors.brown[200],
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        contentPadding: const EdgeInsets.fromLTRB(12, 28, 12, 12),
-        suffixIcon:
-            isPassword
-                ? IconButton(
-                  icon: Icon(
-                    passwordVisible ?? false
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
-                    color: Colors.black54,
-                  ),
-                  onPressed: onTogglePassword,
-                )
-                : null,
-      ),
-      style: const TextStyle(fontFamily: 'CenturyGo'),
-      controller: TextEditingController(text: value),
     );
   }
 }

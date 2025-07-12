@@ -191,13 +191,15 @@ class FirebaseService {
     user?.linkWithCredential(credential);
   }
 
-  // Future<void> setPassword(String password) async {
-  //   final user = FirebaseAuth.instance.currentUser;
-  //   final hasPassword = user?.providerData.any((info) => info.providerId == 'password') ?? false;
-  //   if (hasPassword) {
-  //     await user.updatePassword(password);
-  //   } else {
-  //     throw Exception('No user is currently signed in.');
-  //   }
-  // }
+  Future<void> setPassword(String password) async {
+    final user = FirebaseAuth.instance.currentUser;
+    final hasPassword =
+        user?.providerData.any((info) => info.providerId == 'password') ??
+        false;
+    if (hasPassword) {
+      await user?.updatePassword(password);
+    } else {
+      throw Exception('No user is currently signed in.');
+    }
+  }
 }

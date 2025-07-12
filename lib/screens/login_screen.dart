@@ -37,12 +37,20 @@ class _LoginScreenState extends State<LoginScreen> {
   void googleLogin(context) async {
     try {
       await _firebaseService.signInWithGoogle();
+      final user = FirebaseAuth.instance.currentUser;
+      final hasPassword =
+          user?.providerData.any((info) => info.providerId == 'password') ??
+          false;
+
       if (_firebaseService.getCurrentUser() == null) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text("Google sign-in failed")));
         return;
       } else {
+        if (hasPassword) {
+          Navigator.pushReplacementNamed(context, '/set_password');
+        }
         Navigator.pushReplacementNamed(context, '/home');
       }
     } on FirebaseAuthException catch (e) {
