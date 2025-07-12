@@ -12,6 +12,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   // Helper to check if email is verified
+
   bool get isEmailVerified {
     final user = FirebaseAuth.instance.currentUser;
     return user?.emailVerified ?? false;
@@ -129,6 +130,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = fbService.getCurrentUser();
+    final email = user?.email;
     return Scaffold(
       backgroundColor: const Color(0xFF233C23),
       body: SafeArea(
@@ -240,10 +243,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 4),
 
-                      _ProfileField(
-                        value: 'benn.angeloo1@gmail.com',
-                        isPassword: false,
-                      ),
+                      _ProfileField(value: email ?? "User", isPassword: false),
                       const SizedBox(height: 24),
                       Align(
                         alignment: Alignment(-0.97, 1),
