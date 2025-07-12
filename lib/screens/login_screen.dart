@@ -49,9 +49,9 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       } else {
         if (hasPassword) {
-          Navigator.pushReplacementNamed(context, '/set_password');
+          Navigator.pushReplacementNamed(context, '/home');
         }
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacementNamed(context, '/set_password');
       }
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(
