@@ -53,10 +53,7 @@ class _PhoneOtpState extends State<PhoneOtp> {
     setState(() => _loading = false);
     if (result == null) {
       if (FirebaseAuth.instance.currentUser?.email == null) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => LinkEmailScreen()),
-        );
+        Navigator.pushReplacementNamed(context, '/link_email');
       } else {
         Navigator.pushReplacementNamed(context, '/home');
       }
@@ -71,23 +68,7 @@ class _PhoneOtpState extends State<PhoneOtp> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF233C23),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            if (_codeSent) {
-              setState(() {
-                _codeSent = false;
-                _otpController.clear();
-              });
-            } else {
-              Navigator.pop(context);
-            }
-          },
-        ),
-      ),
+
       body: Center(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
@@ -103,6 +84,25 @@ class _PhoneOtpState extends State<PhoneOtp> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back,
+                        color: Color.fromARGB(255, 8, 8, 8),
+                      ),
+                      onPressed: () {
+                        if (_codeSent) {
+                          setState(() {
+                            _codeSent = false;
+                            _otpController.clear();
+                          });
+                        } else {
+                          Navigator.pop(context);
+                        }
+                      },
+                    ),
+                  ),
                   const SizedBox(height: 50),
                   Text(
                     _codeSent ? 'Verify OTP' : 'Phone Number Login',

@@ -34,37 +34,53 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void googleLogin(context) async {
+  void googleLogin(BuildContext context) async {
     try {
       await _firebaseService.signInWithGoogle();
+
       final user = FirebaseAuth.instance.currentUser;
       final hasPassword =
           user?.providerData.any((info) => info.providerId == 'password') ??
           false;
 
+      // Check if sign-in failed
       if (_firebaseService.getCurrentUser() == null) {
+        if (!context.mounted) return;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Google sign-in failed")),
+          );
+        });
+        return;
+      }
+
+      if (!context.mounted) return;
+
+      // Navigation needs to be delayed to ensure context is still mounted
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushNamed(context, hasPassword ? '/home' : '/set_password');
+      });
+    } on FirebaseAuthException catch (e) {
+      if (!context.mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text("Google sign-in failed")));
-        return;
-      } else {
-        if (hasPassword) {
-          Navigator.pushReplacementNamed(context, '/home');
-        }
-        Navigator.pushReplacementNamed(context, '/set_password');
-      }
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Auth error: ${e.code}")));
+        ).showSnackBar(SnackBar(content: Text("Auth error: ${e.code}")));
+      });
     } on PlatformException catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Platform error: ${e.code}")));
+      if (!context.mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Platform error: ${e.code}")));
+      });
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Unexpected error: $e")));
+      if (!context.mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Unexpected error: $e")));
+      });
     }
   }
 

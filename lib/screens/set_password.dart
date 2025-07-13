@@ -14,7 +14,28 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
   final _passwordController = TextEditingController();
   final FirebaseService _firebaseService = FirebaseService();
   bool _loading = false;
+  bool _passwordVisible = false;
+  bool _confirmPasswordVisible = false;
   String? _error;
+
+  void _setPassword() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      fbService.setPassword(_passwordController.text.trim());
+      Navigator.pushReplacementNamed(context, '/home'); // Success, go back
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        _error = e.message;
+      });
+    } finally {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +43,11 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF233C23),
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false, // 👈 Hides the back button
+      ),
       body: Center(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
@@ -38,6 +63,16 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                      onPressed: () {
+                        _firebaseService.logOut();
+                        Navigator.pop(context, '/login');
+                      },
+                    ),
+                  ),
                   const SizedBox(height: 50),
                   const Text(
                     'Set Password',
@@ -75,15 +110,16 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                   TextFormField(
                     controller: _passwordController,
                     decoration: const InputDecoration(
-                      enabledBorder: UnderlineInputBorder(),
+                      errorBorder: UnderlineInputBorder(),
+                      border: UnderlineInputBorder(),
                       hintText: 'Password',
                       hintStyle: TextStyle(
                         fontFamily: 'CenturyGo',
                         color: Colors.grey,
                       ),
-                      border: InputBorder.none,
                     ),
-                    obscureText: true,
+                    obscureText: _passwordVisible,
+
                     validator:
                         (v) =>
                             v != null && v.length >= 6
@@ -104,7 +140,9 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                             _loading
                                 ? null
                                 : () {
-                                  if (_formKey.currentState!.validate()) {}
+                                  if (_formKey.currentState!.validate()) {
+                                    _setPassword();
+                                  }
                                 },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.black,

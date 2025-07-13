@@ -202,4 +202,117 @@ class FirebaseService {
       throw Exception('No user is currently signed in.');
     }
   }
+
+  // Future<void> linkPassword(password) async {
+  //   final user = FirebaseAuth.instance.currentUser;
+  //   try {
+  //     final credential = EmailAuthProvider.credential(
+  //       email: user!.email!,
+  //       password: password,
+  //     );
+  //     user.linkWithCredential(credential);
+  //   } catch (e) {
+  //     throw Exception('No user is currently signed in.');
+  //   }
+  // }
+
+  Future<void> reloadUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await user.reload();
+    } else {
+      throw Exception('No user is currently signed in.');
+    }
+  }
+
+  Future<bool> matchPassword(String password) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+
+    final hasPassword = user.providerData.any(
+      (info) => info.providerId == 'password',
+    );
+    if (!hasPassword) return false;
+
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: password,
+      );
+      await user.reauthenticateWithCredential(credential);
+      return true; // Password matched
+    } catch (_) {
+      return false; // Password incorrect or failed
+    }
+  }
+
+  Future<String?> emailUpdate(String newEmail) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return "No user signed in.";
+
+    try {
+      await user.verifyBeforeUpdateEmail(newEmail);
+      return null; // Success
+    } on FirebaseAuthException catch (e) {
+      return e.message;
+    }
+  }
+
+  Future<String?> confirmUpdateOTP({required String smsCode}) async {
+    try {
+      // Check if verification ID exists
+      if (_verificationId == null || _verificationId!.isEmpty) {
+        return 'No verification ID found. Please request OTP again.';
+      }
+
+      // Validate SMS code
+      if (smsCode.isEmpty || smsCode.length != 6) {
+        return 'Please enter a valid 6-digit code.';
+      }
+
+      // Create credential
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: smsCode,
+      );
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.updatePhoneNumber(credential);
+      } else {
+        throw FirebaseAuthException(
+          code: 'user-not-signed-in',
+          message: 'No signed-in user found.',
+        );
+      }
+
+      // Clear verification ID after successful verification
+      _verificationId = null;
+
+      return null; // Success
+    } on FirebaseAuthException catch (e) {
+      // Clear verification ID on certain errors
+      if (e.code == 'session-expired' || e.code == 'invalid-verification-id') {
+        _verificationId = null;
+      }
+
+      // Return specific error messages
+      switch (e.code) {
+        case 'invalid-verification-code':
+          return 'Invalid verification code. Please check and try again.';
+        case 'invalid-verification-id':
+          return 'Verification session expired. Please request a new OTP.';
+        case 'session-expired':
+          return 'Verification session expired. Please request a new OTP.';
+        case 'too-many-requests':
+          return 'Too many attempts. Please try again later.';
+        case 'quota-exceeded':
+          return 'SMS quota exceeded. Please try again later.';
+        default:
+          return e.message ?? 'Verification failed: ${e.code}';
+      }
+    } catch (e) {
+      return 'Unexpected error occurred: $e';
+    }
+  }
 }

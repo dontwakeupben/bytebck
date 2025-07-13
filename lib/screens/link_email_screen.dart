@@ -12,6 +12,11 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
   final _emailController = TextEditingController();
   final FirebaseService _firebaseService = FirebaseService();
   final _passwordController = TextEditingController();
+
+  bool _confirmPasswordVisible = false;
+  bool _passwordVisible = false;
+
+  final _confirmPasswordController = TextEditingController();
   bool _loading = false;
   String? _error;
 
@@ -20,12 +25,24 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
       _loading = true;
       _error = null;
     });
+
     try {
       await _firebaseService.linkEmail(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
-      Navigator.pushReplacementNamed(context, '/home'); // Success, go back
+
+      await _firebaseService.reloadUser();
+      await Future.delayed(Duration(seconds: 1));
+      User? updatedUser = FirebaseAuth.instance.currentUser;
+
+      if (updatedUser?.email != null) {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        setState(() {
+          _error = "Something went wrong. Please try again.";
+        });
+      }
     } on FirebaseAuthException catch (e) {
       setState(() {
         if (e.code == 'email-already-in-use') {
@@ -46,7 +63,11 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF233C23),
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+      ), // 👈 Hides the back button,
       body: Center(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
@@ -62,7 +83,17 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SizedBox(height: 50),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                      onPressed: () {
+                        Navigator.pushReplacementNamed(context, '/login');
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
                   const Text(
                     'Link Email & Password',
                     style: TextStyle(
@@ -97,12 +128,13 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
+                      errorBorder: UnderlineInputBorder(),
+                      border: UnderlineInputBorder(),
                       hintText: 'Email',
                       hintStyle: TextStyle(
                         fontFamily: 'CenturyGo',
                         color: Colors.grey,
                       ),
-                      border: InputBorder.none,
                     ),
                     validator:
                         (v) =>
@@ -114,29 +146,86 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
                       fontSize: 20,
                     ),
                   ),
-                  const Divider(),
+                  const SizedBox(height: 32),
                   TextFormField(
                     controller: _passwordController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
+                      errorBorder: UnderlineInputBorder(),
+                      border: UnderlineInputBorder(),
                       hintText: 'Password',
                       hintStyle: TextStyle(
                         fontFamily: 'CenturyGo',
                         color: Colors.grey,
                       ),
-                      border: InputBorder.none,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _passwordVisible
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          color: Colors.grey[600],
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _passwordVisible = !_passwordVisible;
+                          });
+                        },
+                      ),
                     ),
-                    obscureText: true,
-                    validator:
-                        (v) =>
-                            v != null && v.length >= 6
-                                ? null
-                                : 'Password too short',
+                    obscureText: !_passwordVisible,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a password';
+                      }
+                      if (value.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
                     style: const TextStyle(
                       fontFamily: 'CenturyGo',
                       fontSize: 20,
                     ),
                   ),
-                  const Divider(),
+                  const SizedBox(height: 32),
+                  TextFormField(
+                    controller: _confirmPasswordController,
+                    decoration: InputDecoration(
+                      errorBorder: UnderlineInputBorder(),
+                      border: UnderlineInputBorder(),
+                      hintText: 'Confirm Password',
+                      hintStyle: TextStyle(
+                        fontFamily: 'CenturyGo',
+                        color: Colors.grey,
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _passwordVisible
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          color: Colors.grey[600],
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _confirmPasswordVisible = !_confirmPasswordVisible;
+                          });
+                        },
+                      ),
+                    ),
+                    obscureText: !_confirmPasswordVisible,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please confirm your password';
+                      }
+                      if (value != _passwordController.text) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
+                    style: const TextStyle(
+                      fontFamily: 'CenturyGo',
+                      fontSize: 20,
+                    ),
+                  ),
                   const SizedBox(height: 100),
                   Center(
                     child: SizedBox(

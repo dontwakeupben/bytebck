@@ -1,6 +1,8 @@
 import 'package:byteback2/services/firebase_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -12,6 +14,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
+  bool _loading = false;
 
   // Helper to check if email is verified
 
@@ -21,7 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // Send verification email and show feedback
-  Future<void> sendVerificationEmail() async {
+  void sendVerificationEmail() async {
     try {
       await fbService.sendEmailVerification();
       ScaffoldMessenger.of(
@@ -35,52 +38,219 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void sendOTP(context, phone) async {
+    setState(() => _loading = true);
+    try {
+      // Format phone number for Singapore
+      if (!phone.startsWith('+')) {
+        phone = '+65$phone';
+      }
+
+      await fbService.sendOTP(phone);
+      setState(() {
+        _loading = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('OTP sent!')));
+    } catch (e) {
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to send OTP: $e')));
+    }
+  }
+
+  void confirmOTP(context, otpCode) async {
+    await fbService.confirmUpdateOTP(smsCode: otpCode).catchError((e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    });
+  }
+
   bool _passwordVisible = false;
   bool _isDarkMode = false;
+  bool oldPasswordVisible = false;
+
   // Function to show a confirmation dialog when saving changes
-  void _showSaveConfirmation() {
+  void _showSaveConfirmation(email, password, phone) async {
+    final dialogFormKey = GlobalKey<FormState>();
+    final oldPasswordController = TextEditingController();
+    final otpController = TextEditingController();
+    final user = fbService.getCurrentUser();
+    final phonenumber = user?.phoneNumber ?? '';
+    bool check = (phone.isNotEmpty && phone != phonenumber);
+    if (check) {
+      sendOTP(context, phone);
+    }
+
     if (_formKey.currentState?.validate() ?? false) {
       showDialog(
         context: context,
         builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: const Color(0xFFF8F5E3),
-            title: const Text(
-              'Save Changes',
-              style: TextStyle(
-                fontFamily: 'CenturyGo',
-                color: Color(0xFF233C23),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: const Text(
-              'Are you sure you want to save these changes?',
-              style: TextStyle(
-                fontFamily: 'CenturyGo',
-                color: Color(0xFF233C23),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Changes saved successfully')),
-                  );
-                },
-                child: const Text(
-                  'Save',
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                backgroundColor: const Color(0xFFF8F5E3),
+                title: const Text(
+                  'Confirm Changes',
                   style: TextStyle(
-                    color: Colors.green,
+                    fontFamily: 'CenturyGo',
+                    color: Color(0xFF233C23),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-            ],
+                content: Form(
+                  key: dialogFormKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        check
+                            ? 'Please enter the OTP code to the new number and current password to save changes.'
+                            : 'Please enter your current passsword to save changes.',
+
+                        style: TextStyle(
+                          fontFamily: 'CenturyGo',
+                          color: Color(0xFF233C23),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (check)
+                        TextFormField(
+                          controller: otpController,
+
+                          decoration: InputDecoration(
+                            hintText: '6 Digit OTP Code',
+                            hintStyle: const TextStyle(
+                              fontFamily: 'CenturyGo',
+                              color: Colors.grey,
+                            ),
+                            border: const UnderlineInputBorder(),
+                            errorBorder: const UnderlineInputBorder(),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter the OTP code';
+                            }
+                            if (value.length != 6) {
+                              return 'OTP code must be 6 digits';
+                            }
+                            return null;
+                          },
+                          style: const TextStyle(
+                            fontFamily: 'CenturyGo',
+                            fontSize: 18,
+                          ),
+                        ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: oldPasswordController,
+                        obscureText: !oldPasswordVisible,
+                        decoration: InputDecoration(
+                          hintText: 'Password',
+                          hintStyle: const TextStyle(
+                            fontFamily: 'CenturyGo',
+                            color: Colors.grey,
+                          ),
+                          border: const UnderlineInputBorder(),
+                          errorBorder: const UnderlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              oldPasswordVisible
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: Colors.grey[600],
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                oldPasswordVisible = !oldPasswordVisible;
+                              });
+                            },
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please confirm your password';
+                          }
+                          return null;
+                        },
+                        style: const TextStyle(
+                          fontFamily: 'CenturyGo',
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      if (dialogFormKey.currentState!.validate()) {
+                        bool check = await fbService.matchPassword(
+                          oldPasswordController.text,
+                        );
+                        if (!check) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Incorrect password. Changes not saved.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        if (!(password.isEmpty && password == null)) {
+                          try {
+                            await fbService.setPassword(password);
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error updating password: $e'),
+                              ),
+                            );
+                          }
+                        }
+                        if (!(password.isEmpty && password == null)) {
+                          try {
+                            await fbService.emailUpdate(email);
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error updating email: $e'),
+                              ),
+                            );
+                          }
+                        }
+                        confirmOTP(context, otpController.text);
+                        await fbService.reloadUser();
+                        await Future.delayed(Duration(seconds: 1));
+
+                        Navigator.of(context).pop(); // Close dialog
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Changes saved successfully'),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text(
+                      'Save',
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         },
       );
@@ -127,9 +297,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = fbService.getCurrentUser();
     final email = user?.email;
+    final phone = user?.phoneNumber;
     final _nameController = TextEditingController(text: 'ben angelo');
     final _emailController = TextEditingController(text: email ?? "User");
-    final _passwordController = TextEditingController(text: 'ballslicker32');
+    final _passwordController = TextEditingController();
+    final _phoneController = TextEditingController(text: phone);
 
     return Scaffold(
       backgroundColor: const Color(0xFF233C23),
@@ -139,15 +311,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Back button at the top left
-              Padding(
-                padding: const EdgeInsets.only(left: 8, top: 8),
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
+              Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 8),
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
                   ),
-                ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, top: 8),
+                    child: Align(
+                      alignment: Alignment.topRight,
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.refresh,
+                          color: Colors.white,
+                          size: 27,
+                        ),
+                        onPressed: () {
+                          fbService.reloadUser();
+                          setState(
+                            () {},
+                          ); // Refresh the UI after reloading user data
+                        },
+                        tooltip: 'Refresh',
+                      ),
+                    ),
+                  ),
+                ],
               ),
               FittedBox(
                 fit: BoxFit.scaleDown,
@@ -212,7 +408,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                           ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 25),
+                        Center(
+                          child: Text(
+                            'Change Profile Information',
+                            style: TextStyle(
+                              fontFamily: 'CenturyGo',
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
                         Align(
                           alignment: Alignment(-0.97, -0.94),
                           child: Text(
@@ -318,7 +526,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           controller: _passwordController,
                           obscureText: !_passwordVisible,
                           decoration: InputDecoration(
-                            hintText: 'Enter your password',
+                            hintText: 'Enter your new password',
                             filled: true,
                             fillColor: Colors.brown[200],
                             border: OutlineInputBorder(
@@ -346,11 +554,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Password is required';
-                            }
-                            if (value.length < 6) {
+                            if (value!.isNotEmpty && value.length < 6) {
                               return 'Password must be at least 6 characters';
+                            }
+                            return null;
+                          },
+                          style: const TextStyle(fontFamily: 'CenturyGo'),
+                        ),
+                        const SizedBox(height: 24),
+                        Align(
+                          alignment: Alignment(-0.97, 1),
+                          child: Text(
+                            'Phone Number',
+                            style: TextStyle(
+                              fontFamily: 'CenturyGo',
+                              fontSize: 16,
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+
+                        TextFormField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'^\+?\d*'),
+                            ), // Allows '+' at the beginning and digits
+                          ],
+                          decoration: InputDecoration(
+                            hintText:
+                                'Enter your phone number (e.g. +6591234567)',
+                            filled: true,
+                            fillColor: Colors.brown[200],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.fromLTRB(
+                              12,
+                              28,
+                              12,
+                              12,
+                            ),
+                          ),
+                          validator: (value) {
+                            final sgPhoneRegex = RegExp(r'^\+65[89]\d{7}$');
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your phone number';
+                            } else if (!sgPhoneRegex.hasMatch(value)) {
+                              return 'Phone number must start with +65 and be\n8 digits (e.g. +6591234567) and is valid.';
                             }
                             return null;
                           },
@@ -359,7 +614,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                         const SizedBox(height: 32),
                         ElevatedButton(
-                          onPressed: _showSaveConfirmation,
+                          onPressed: () async {
+                            _showSaveConfirmation(
+                              _emailController.text,
+                              _passwordController.text,
+                              _phoneController.text,
+                            );
+                            setState(() {
+                              final user = fbService.getCurrentUser();
+                              _emailController.text = user?.email ?? '';
+                              _phoneController.text = user?.phoneNumber ?? '';
+                              // similarly update other controllers
+                            });
+                          },
+
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green[600],
                             shape: RoundedRectangleBorder(
@@ -541,13 +809,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: Column(
                     children: [
-                      const _SettingsTile(icon: Icons.person, label: 'Account'),
-                      Divider(
-                        color: Color.fromARGB(255, 0, 0, 0),
-                        height: 1,
-                        indent: 0,
-                        endIndent: 0,
-                      ),
                       const _SettingsTile(
                         icon: Icons.notifications,
                         label: 'Notifications',

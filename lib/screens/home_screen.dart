@@ -76,7 +76,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (user == null) {
                       return const Text("Hello Friend!");
                     }
+
                     final email = user.email;
+
                     return FittedBox(
                       child: Text(
                         "Hello " + (email ?? "User") + "!",
