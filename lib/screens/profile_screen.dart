@@ -81,11 +81,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = fbService.getCurrentUser();
     final phonenumber = user?.phoneNumber ?? '';
     bool check = (phone.isNotEmpty && phone != phonenumber);
-    if (check) {
-      sendOTP(context, phone);
-    }
 
     if (_formKey.currentState?.validate() ?? false) {
+      if (check) {
+        sendOTP(context, phone);
+      }
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -120,6 +120,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       if (check)
                         TextFormField(
                           controller: otpController,
+                          keyboardType: TextInputType.number,
 
                           decoration: InputDecoration(
                             hintText: '6 Digit OTP Code',
@@ -148,6 +149,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       TextFormField(
                         controller: oldPasswordController,
                         obscureText: !oldPasswordVisible,
+                        keyboardType: TextInputType.visiblePassword,
+
                         decoration: InputDecoration(
                           hintText: 'Password',
                           hintStyle: const TextStyle(
@@ -437,6 +440,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                         TextFormField(
                           controller: _nameController,
+                          keyboardType: TextInputType.name,
+
                           decoration: InputDecoration(
                             hintText: 'Enter your name',
                             filled: true,
@@ -477,6 +482,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 4),
 
                         TextFormField(
+                          keyboardType: TextInputType.emailAddress,
+
                           controller: _emailController,
                           decoration: InputDecoration(
                             hintText: 'Enter your email',
@@ -524,6 +531,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                         TextFormField(
                           controller: _passwordController,
+                          keyboardType: TextInputType.visiblePassword,
+
                           obscureText: !_passwordVisible,
                           decoration: InputDecoration(
                             hintText: 'Enter your new password',

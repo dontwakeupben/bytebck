@@ -88,6 +88,7 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.black87),
                       onPressed: () {
+                        _firebaseService.logOut();
                         Navigator.pushReplacementNamed(context, '/login');
                       },
                     ),
@@ -127,6 +128,7 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
                   ],
                   TextFormField(
                     controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
                       errorBorder: UnderlineInputBorder(),
                       border: UnderlineInputBorder(),
@@ -149,6 +151,7 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
                   const SizedBox(height: 32),
                   TextFormField(
                     controller: _passwordController,
+                    keyboardType: TextInputType.visiblePassword,
                     decoration: InputDecoration(
                       errorBorder: UnderlineInputBorder(),
                       border: UnderlineInputBorder(),
@@ -189,6 +192,7 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
                   const SizedBox(height: 32),
                   TextFormField(
                     controller: _confirmPasswordController,
+                    keyboardType: TextInputType.visiblePassword,
                     decoration: InputDecoration(
                       errorBorder: UnderlineInputBorder(),
                       border: UnderlineInputBorder(),
@@ -199,7 +203,7 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
                       ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _passwordVisible
+                          _confirmPasswordVisible
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
                           color: Colors.grey[600],

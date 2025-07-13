@@ -12,6 +12,7 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   FirebaseService fbService = GetIt.instance<FirebaseService>();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final FirebaseService _firebaseService = FirebaseService();
   bool _loading = false;
   bool _passwordVisible = false;
@@ -23,17 +24,29 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
       _loading = true;
       _error = null;
     });
+
     try {
-      fbService.setPassword(_passwordController.text.trim());
-      Navigator.pushReplacementNamed(context, '/home'); // Success, go back
+      await fbService.setPassword(_passwordController.text.trim());
+      Navigator.pushReplacementNamed(context, '/home');
     } on FirebaseAuthException catch (e) {
       setState(() {
         _error = e.message;
       });
+      // Show error as a SnackBar
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message ?? 'Failed to set password'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -46,7 +59,7 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        automaticallyImplyLeading: false, // 👈 Hides the back button
+        automaticallyImplyLeading: false,
       ),
       body: Center(
         child: Container(
@@ -109,7 +122,8 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                   ],
                   TextFormField(
                     controller: _passwordController,
-                    decoration: const InputDecoration(
+                    keyboardType: TextInputType.visiblePassword,
+                    decoration: InputDecoration(
                       errorBorder: UnderlineInputBorder(),
                       border: UnderlineInputBorder(),
                       hintText: 'Password',
@@ -117,14 +131,71 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                         fontFamily: 'CenturyGo',
                         color: Colors.grey,
                       ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _passwordVisible
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          color: Colors.grey[600],
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _passwordVisible = !_passwordVisible;
+                          });
+                        },
+                      ),
                     ),
-                    obscureText: _passwordVisible,
-
-                    validator:
-                        (v) =>
-                            v != null && v.length >= 6
-                                ? null
-                                : 'Password too short',
+                    obscureText: !_passwordVisible,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a password';
+                      }
+                      if (value.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                    style: const TextStyle(
+                      fontFamily: 'CenturyGo',
+                      fontSize: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  TextFormField(
+                    controller: _confirmPasswordController,
+                    keyboardType: TextInputType.visiblePassword,
+                    decoration: InputDecoration(
+                      errorBorder: UnderlineInputBorder(),
+                      border: UnderlineInputBorder(),
+                      hintText: 'Confirm Password',
+                      hintStyle: TextStyle(
+                        fontFamily: 'CenturyGo',
+                        color: Colors.grey,
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _confirmPasswordVisible
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          color: Colors.grey[600],
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _confirmPasswordVisible = !_confirmPasswordVisible;
+                          });
+                        },
+                      ),
+                    ),
+                    obscureText: !_confirmPasswordVisible,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please confirm your password';
+                      }
+                      if (value != _passwordController.text) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
                     style: const TextStyle(
                       fontFamily: 'CenturyGo',
                       fontSize: 20,

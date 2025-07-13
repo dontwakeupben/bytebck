@@ -11,6 +11,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  bool _isLoading = false;
   bool _passwordVisible = false;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
@@ -231,10 +232,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () {
-                    googleLogin(context);
-                  },
-
+                  onPressed:
+                      _isLoading
+                          ? null // Disable button while loading
+                          : () async {
+                            setState(() => _isLoading = true); // Start loading
+                            googleLogin(context);
+                            setState(
+                              () => _isLoading = false,
+                            ); // Stop loading after login
+                          },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
@@ -242,22 +249,34 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     minimumSize: const Size.fromHeight(48),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        'Sign in with ',
-                        style: TextStyle(
-                          fontFamily: 'CenturyGo',
-                          fontSize: 20,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Image.asset('images/google.png', width: 28, height: 28),
-                    ],
-                  ),
+                  child:
+                      _isLoading
+                          ? const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          )
+                          : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'Sign in with ',
+                                style: TextStyle(
+                                  fontFamily: 'CenturyGo',
+                                  fontSize: 20,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Image.asset(
+                                'images/google.png',
+                                width: 28,
+                                height: 28,
+                              ),
+                            ],
+                          ),
                 ),
+
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
