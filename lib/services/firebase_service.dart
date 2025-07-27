@@ -183,12 +183,16 @@ class FirebaseService {
   }
 
   Future<void> linkEmail(email, password) async {
-    final user = FirebaseAuth.instance.currentUser;
-    final credential = EmailAuthProvider.credential(
-      email: email,
-      password: password,
-    );
-    user?.linkWithCredential(credential);
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: password,
+      );
+      user?.linkWithCredential(credential);
+    } catch (e) {
+      throw Exception('Unexpected Error $e');
+    }
   }
 
   Future<void> setPassword(String password) async {
