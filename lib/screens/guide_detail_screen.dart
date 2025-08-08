@@ -2,11 +2,218 @@ import 'package:byteback2/screens/update_guide_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:byteback2/models/Guide.dart';
 import 'package:byteback2/data/guide_data.dart';
+import 'package:byteback2/services/image_service.dart';
+import 'package:byteback2/services/guide_service.dart';
+import 'package:get_it/get_it.dart';
 
-class GuideDetailScreen extends StatelessWidget {
+class GuideDetailScreen extends StatefulWidget {
   final Guide guide;
+  final VoidCallback? onUpdate;
 
-  const GuideDetailScreen({super.key, required this.guide});
+  const GuideDetailScreen({super.key, required this.guide, this.onUpdate});
+
+  @override
+  State<GuideDetailScreen> createState() => _GuideDetailScreenState();
+}
+
+class _GuideDetailScreenState extends State<GuideDetailScreen> {
+  late final GuideService _guideService;
+  late Guide _currentGuide;
+  bool _isLiking = false;
+  bool _isDeleting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _guideService = GetIt.instance<GuideService>();
+    _currentGuide = widget.guide;
+  }
+
+  /// Handle like/unlike action
+  Future<void> _handleLike() async {
+    if (_isLiking || _currentGuide.id == null) return;
+
+    setState(() {
+      _isLiking = true;
+    });
+
+    try {
+      final success = await _guideService.toggleLikeGuide(_currentGuide.id!);
+
+      if (success) {
+        // Update the local guide object
+        setState(() {
+          _currentGuide = Guide(
+            id: _currentGuide.id,
+            title: _currentGuide.title,
+            subtitle: _currentGuide.subtitle,
+            image: _currentGuide.image,
+            device: _currentGuide.device,
+            difficulty: _currentGuide.difficulty,
+            isDownloaded: _currentGuide.isDownloaded,
+            isLiked: !_currentGuide.isLiked,
+            isMine: _currentGuide.isMine,
+            likesCount:
+                _currentGuide.isLiked
+                    ? _currentGuide.likesCount - 1
+                    : _currentGuide.likesCount + 1,
+            createdBy: _currentGuide.createdBy,
+          );
+        });
+
+        // Show feedback
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                _currentGuide.isLiked ? 'Added to likes' : 'Removed from likes',
+              ),
+              backgroundColor: const Color(0xFF233C23),
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        }
+        
+        // Call onUpdate callback to refresh parent screen
+        if (widget.onUpdate != null) {
+          widget.onUpdate!();
+        }
+      } else {
+        // Show error
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to update like status'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLiking = false;
+        });
+      }
+    }
+  }
+
+  /// Handle delete action with confirmation
+  Future<void> _handleDelete() async {
+    if (_isDeleting || _currentGuide.id == null) return;
+
+    // Show confirmation dialog
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFFF8F5E3),
+          title: const Text(
+            'Delete Guide',
+            style: TextStyle(
+              fontFamily: 'CenturyGo',
+              color: Color(0xFF233C23),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to delete "${_currentGuide.title}"? This action cannot be undone.',
+            style: const TextStyle(
+              fontFamily: 'CenturyGo',
+              color: Color(0xFF233C23),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  fontFamily: 'CenturyGo',
+                  color: Color(0xFF233C23),
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text(
+                'Delete',
+                style: TextStyle(
+                  fontFamily: 'CenturyGo',
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isDeleting = true;
+    });
+
+    try {
+      final success = await _guideService.deleteGuide(_currentGuide.id!);
+
+      if (success) {
+        // Show success message and navigate back
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Guide deleted successfully'),
+              backgroundColor: Color(0xFF233C23),
+              duration: Duration(seconds: 2),
+            ),
+          );
+
+          // Navigate back to previous screen
+          Navigator.of(context).pop();
+        }
+      } else {
+        // Show error
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to delete guide'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,13 +239,7 @@ class GuideDetailScreen extends StatelessWidget {
                           color: Colors.white.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Center(
-                          child: Image.asset(
-                            guide.image,
-                            height: 250,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
+                        child: Center(child: _buildGuideImage()),
                       ),
                     ),
                     // Back button
@@ -51,7 +252,7 @@ class GuideDetailScreen extends StatelessWidget {
                           if (Navigator.canPop(context)) {
                             Navigator.pop(context);
                           } else {
-                            Navigator.pushReplacementNamed(context, '/home');
+                            Navigator.pushReplacementNamed(context, '/main');
                           }
                         },
                       ),
@@ -62,7 +263,7 @@ class GuideDetailScreen extends StatelessWidget {
                       right: 16,
                       child: Row(
                         children: [
-                          if (guide.isMine) ...[
+                          if (_currentGuide.isMine) ...[
                             // Edit button
                             IconButton(
                               icon: const Icon(
@@ -74,156 +275,81 @@ class GuideDetailScreen extends StatelessWidget {
                                   context,
                                   MaterialPageRoute(
                                     builder:
-                                        (context) =>
-                                            UpdateGuideScreen(guide: guide),
+                                        (context) => UpdateGuideScreen(
+                                          guide: _currentGuide,
+                                        ),
                                   ),
                                 );
                               },
                             ),
                             // Delete button
                             IconButton(
-                              icon: const Icon(
-                                Icons.delete_outline,
-                                color: Colors.white,
-                              ),
-                              onPressed: () {
-                                // Show confirmation dialog
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      backgroundColor: const Color(0xFFF8F5E3),
-                                      title: const Text(
-                                        'Delete Guide',
-                                        style: TextStyle(
-                                          fontFamily: 'CenturyGo',
-                                          color: Color(0xFF233C23),
+                              icon:
+                                  _isDeleting
+                                      ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
                                         ),
+                                      )
+                                      : const Icon(
+                                        Icons.delete_outline,
+                                        color: Colors.white,
                                       ),
-                                      content: const Text(
-                                        'Are you sure you want to delete this guide?',
-                                        style: TextStyle(
-                                          fontFamily: 'CenturyGo',
-                                          color: Color(0xFF233C23),
-                                        ),
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                          },
-                                          child: const Text(
-                                            'Cancel',
-                                            style: TextStyle(
-                                              fontFamily: 'CenturyGo',
-                                              color: Color(0xFF233C23),
-                                            ),
-                                          ),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            // Delete the guide
-                                            GuideData.removeGuide(guide.title);
-                                            Navigator.of(
-                                              context,
-                                            ).pop(); // Close dialog
-                                            Navigator.of(
-                                              context,
-                                            ).pop(); // Go back to previous screen
-                                          },
-                                          child: const Text(
-                                            'Delete',
-                                            style: TextStyle(
-                                              fontFamily: 'CenturyGo',
-                                              color: Colors.red,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
+                              onPressed: _isDeleting ? null : _handleDelete,
                             ),
                           ],
                           // Like button
                           IconButton(
-                            icon: Icon(
-                              guide.isLiked
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                              color: guide.isLiked ? Colors.red : Colors.white,
-                            ),
-                            onPressed: () {
-                              GuideData.toggleLike(guide.title);
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    backgroundColor: const Color(0xFFF8F5E3),
-                                    title: Text(
-                                      guide.isLiked
-                                          ? 'Removed from Likes'
-                                          : 'Added to Likes',
-                                      style: const TextStyle(
-                                        fontFamily: 'CenturyGo',
-                                        color: Color(0xFF233C23),
+                            icon:
+                                _isLiking
+                                    ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
                                       ),
+                                    )
+                                    : Icon(
+                                      _currentGuide.isLiked
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
+                                      color:
+                                          _currentGuide.isLiked
+                                              ? Colors.red
+                                              : Colors.white,
                                     ),
-                                    content: Text(
-                                      guide.isLiked
-                                          ? 'The guide has been removed from your likes.'
-                                          : 'The guide has been added to your likes.',
-                                      style: const TextStyle(
-                                        fontFamily: 'CenturyGo',
-                                        color: Color(0xFF233C23),
-                                      ),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop();
-                                        },
-                                        child: const Text(
-                                          'OK',
-                                          style: TextStyle(
-                                            fontFamily: 'CenturyGo',
-                                            color: Color(0xFF233C23),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
+                            onPressed: _isLiking ? null : _handleLike,
                           ),
                           // Download button
                           IconButton(
                             icon: Icon(
-                              guide.isDownloaded
+                              _currentGuide.isDownloaded
                                   ? Icons.download_done
                                   : Icons.download_outlined,
                               color: Colors.white,
                             ),
                             onPressed: () {
-                              GuideData.toggleDownload(guide.title);
+                              GuideData.toggleDownload(_currentGuide.title);
                               showDialog(
                                 context: context,
                                 builder: (BuildContext context) {
                                   return AlertDialog(
                                     backgroundColor: const Color(0xFFF8F5E3),
                                     title: Text(
-                                      guide.isDownloaded
-                                          ? 'Guide Removed'
-                                          : 'Guide Downloaded',
+                                      _currentGuide.isDownloaded
+                                          ? 'Removed from Downloads'
+                                          : 'Added to Downloads',
                                       style: const TextStyle(
                                         fontFamily: 'CenturyGo',
                                         color: Color(0xFF233C23),
                                       ),
                                     ),
                                     content: Text(
-                                      guide.isDownloaded
+                                      _currentGuide.isDownloaded
                                           ? 'The guide has been removed from your downloads.'
                                           : 'The guide has been added to your downloads.',
                                       style: const TextStyle(
@@ -268,15 +394,15 @@ class GuideDetailScreen extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color:
-                            guide.difficulty == 'Easy'
+                            _currentGuide.difficulty == 'Easy'
                                 ? Colors.green[300]
-                                : guide.difficulty == 'Medium'
+                                : _currentGuide.difficulty == 'Medium'
                                 ? Colors.yellow[300]
                                 : Colors.red[300],
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        guide.difficulty,
+                        _currentGuide.difficulty,
                         style: const TextStyle(
                           color: Colors.white,
                           fontFamily: 'CenturyGo',
@@ -297,7 +423,7 @@ class GuideDetailScreen extends StatelessWidget {
                       child: Row(
                         children: [
                           Icon(
-                            guide.device == 'Laptop'
+                            _currentGuide.device == 'Laptop'
                                 ? Icons.laptop_chromebook_outlined
                                 : Icons.desktop_windows_outlined,
                             color: Colors.white,
@@ -305,7 +431,7 @@ class GuideDetailScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            guide.device,
+                            _currentGuide.device,
                             style: const TextStyle(
                               color: Colors.white,
                               fontFamily: 'CenturyGo',
@@ -324,7 +450,7 @@ class GuideDetailScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      guide.title,
+                      _currentGuide.title,
                       style: const TextStyle(
                         color: Colors.white,
                         fontFamily: 'CenturyGo',
@@ -334,7 +460,7 @@ class GuideDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      guide.subtitle,
+                      _currentGuide.subtitle,
                       style: const TextStyle(
                         color: Colors.white,
                         fontFamily: 'CenturyGo',
@@ -352,7 +478,7 @@ class GuideDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Created by ${guide.createdBy}',
+                          'Created by ${_currentGuide.createdBy}',
                           style: const TextStyle(
                             color: Colors.white70,
                             fontFamily: 'CenturyGo',
@@ -370,5 +496,51 @@ class GuideDetailScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Builds the appropriate image widget for the guide
+  /// Handles both asset images and base64 data URLs
+  Widget _buildGuideImage() {
+    if (ImageService.isValidBase64DataUrl(_currentGuide.image)) {
+      // Handle base64 data URL
+      return ImageService.base64ToImage(
+        _currentGuide.image,
+        height: 250,
+        fit: BoxFit.contain,
+        placeholder: Container(
+          height: 250,
+          color: Colors.grey[300],
+          child: const Icon(Icons.image, color: Colors.grey, size: 80),
+        ),
+      );
+    } else if (_currentGuide.image.startsWith('http')) {
+      // Handle network images
+      return Image.network(
+        _currentGuide.image,
+        height: 250,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            height: 250,
+            color: Colors.grey[300],
+            child: const Icon(Icons.broken_image, color: Colors.grey, size: 80),
+          );
+        },
+      );
+    } else {
+      // Handle asset images
+      return Image.asset(
+        _currentGuide.image,
+        height: 250,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            height: 250,
+            color: Colors.grey[300],
+            child: const Icon(Icons.image, color: Colors.grey, size: 80),
+          );
+        },
+      );
+    }
   }
 }

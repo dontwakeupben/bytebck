@@ -1,5 +1,6 @@
 import 'package:byteback2/services/firebase_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class LinkEmailScreen extends StatefulWidget {
@@ -9,6 +10,7 @@ class LinkEmailScreen extends StatefulWidget {
 
 class _LinkEmailScreenState extends State<LinkEmailScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final FirebaseService _firebaseService = FirebaseService();
   final _passwordController = TextEditingController();
@@ -33,11 +35,32 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
       );
 
       await _firebaseService.reloadUser();
+
+      // Get the current user after linking
+      User? currentUser = FirebaseAuth.instance.currentUser;
+
+      if (currentUser != null) {
+        // Create a comprehensive user document in Firestore
+        await _firebaseService.createUserDocument(
+          uid: currentUser.uid,
+          email: currentUser.email ?? _emailController.text.trim(),
+          displayName: _nameController.text.trim(),
+          photoURL: 'images/pfp.jpeg', // Default profile picture
+        );
+
+        // Also update the Firebase Auth user's display name
+        if (_nameController.text.trim().isNotEmpty) {
+          await _firebaseService.updateUserDisplayName(
+            _nameController.text.trim(),
+          );
+        }
+      }
+
       await Future.delayed(Duration(seconds: 1));
       User? updatedUser = FirebaseAuth.instance.currentUser;
 
       if (updatedUser?.email != null) {
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacementNamed(context, '/main');
       } else {
         setState(() {
           _error = "Something went wrong. Please try again.";
@@ -52,11 +75,24 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
           _error = e.message;
         }
       });
+    } catch (e) {
+      setState(() {
+        _error = "Error creating user profile: $e";
+      });
     } finally {
       setState(() {
         _loading = false;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -72,7 +108,7 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
           padding: const EdgeInsets.all(24),
-          height: 650,
+          height: 700, // Increased height to accommodate the name field
           decoration: BoxDecoration(
             color: const Color(0xFFF8F5E3),
             borderRadius: BorderRadius.circular(28),
@@ -106,7 +142,7 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
                   ),
                   const SizedBox(height: 20),
                   const Text(
-                    'Please provide an email and password to link to your account.',
+                    'Please provide your name, email and password to create your account.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: 'CenturyGo',
@@ -126,6 +162,69 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
                     ),
                     const SizedBox(height: 8),
                   ],
+                  TextFormField(
+                    controller: _nameController,
+                    keyboardType: TextInputType.name,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r"[a-zA-Z\s\-']"),
+                      ), // Only allow letters, spaces, hyphens, and apostrophes
+                      LengthLimitingTextInputFormatter(
+                        50,
+                      ), // Limit to 50 characters
+                    ],
+                    decoration: const InputDecoration(
+                      errorBorder: UnderlineInputBorder(),
+                      border: UnderlineInputBorder(),
+                      hintText: 'Full Name',
+                      hintStyle: TextStyle(
+                        fontFamily: 'CenturyGo',
+                        color: Colors.grey,
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Name is required';
+                      }
+
+                      // Remove extra whitespace and validate
+                      final trimmedValue = value.trim();
+
+                      // Check for minimum length
+                      if (trimmedValue.length < 2) {
+                        return 'Name must be at least 2 characters long';
+                      }
+
+                      // Check for maximum length
+                      if (trimmedValue.length > 50) {
+                        return 'Name must be less than 50 characters';
+                      }
+
+                      // Allow only letters, spaces, hyphens, and apostrophes
+                      final validNameRegex = RegExp(r"^[a-zA-Z\s\-']+$");
+                      if (!validNameRegex.hasMatch(trimmedValue)) {
+                        return 'Name can only contain letters, spaces, hyphens, and apostrophes';
+                      }
+
+                      // Check for consecutive spaces
+                      if (trimmedValue.contains(RegExp(r'\s{2,}'))) {
+                        return 'Name cannot contain consecutive spaces';
+                      }
+
+                      // Check for leading/trailing special characters
+                      if (RegExp(r"^[\-']").hasMatch(trimmedValue) ||
+                          RegExp(r"[\-']$").hasMatch(trimmedValue)) {
+                        return 'Name cannot start or end with special characters';
+                      }
+
+                      return null;
+                    },
+                    style: const TextStyle(
+                      fontFamily: 'CenturyGo',
+                      fontSize: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -261,7 +360,7 @@ class _LinkEmailScreenState extends State<LinkEmailScreen> {
                                   ),
                                 )
                                 : const Text(
-                                  'Link Email',
+                                  'Create Account',
                                   style: TextStyle(
                                     fontFamily: 'CenturyGo',
                                     fontSize: 18,

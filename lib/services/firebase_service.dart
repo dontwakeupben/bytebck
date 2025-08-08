@@ -1,6 +1,4 @@
-import 'package:byteback2/models/firestore_user.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -46,15 +44,74 @@ class FirebaseService {
             clientId:
                 '546845317104-tgf7ssojnq3b82h1lk4hf2isq67teabv.apps.googleusercontent.com',
           ).signIn();
-      GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
+
+      if (googleUser == null) {
+        debugPrint('Google Sign-In was cancelled by user');
+        return null;
+      }
+
+      GoogleSignInAuthentication? googleAuth = await googleUser.authentication;
       OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth?.accessToken,
-        idToken: googleAuth?.idToken,
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
-      return await FirebaseAuth.instance.signInWithCredential(credential);
+
+      UserCredential result = await FirebaseAuth.instance.signInWithCredential(
+        credential,
+      );
+
+      // Create or update Firestore user document with Google user info
+      if (result.user != null) {
+        await _createOrUpdateUserDocument(
+          uid: result.user!.uid,
+          email: result.user!.email ?? '',
+          displayName: result.user!.displayName ?? googleUser.displayName ?? '',
+          photoURL: result.user!.photoURL ?? googleUser.photoUrl ?? '',
+          isNewUser: result.additionalUserInfo?.isNewUser ?? false,
+        );
+      }
+
+      return result;
     } catch (e) {
       debugPrint('Google Sign-In failed: $e');
       return null;
+    }
+  }
+
+  // Helper method to create or update user document
+  Future<void> _createOrUpdateUserDocument({
+    required String uid,
+    required String email,
+    required String displayName,
+    required String photoURL,
+    required bool isNewUser,
+  }) async {
+    try {
+      final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+
+      if (isNewUser) {
+        // Create new user document
+        await userRef.set({
+          'email': email,
+          'displayName': displayName,
+          'fullName':
+              displayName, // Store as both displayName and fullName for consistency
+          'photoURL': photoURL,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+          'provider': 'google',
+        });
+      } else {
+        // Update existing user document with latest Google info
+        await userRef.update({
+          'displayName': displayName,
+          'fullName': displayName,
+          'photoURL': photoURL,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      debugPrint('Error creating/updating user document: $e');
     }
   }
 
@@ -311,7 +368,7 @@ class FirebaseService {
   Future<String?> createGuideCard({
     required String title,
     required String description,
-    required String imageUrl,
+    required String imageUrl, // Can be base64 data URL or regular URL
     required String device, // "desktop" or "laptop"
     required String difficulty, // "easy", "medium", or "hard"
     String? customId, // Optional custom ID, otherwise uses auto-generated ID
@@ -325,11 +382,12 @@ class FirebaseService {
       final guideData = {
         'title': title,
         'description': description,
-        'imageUrl': imageUrl,
+        'imageUrl': imageUrl, // Store base64 data URL directly
         'device': device,
         'difficulty': difficulty,
         'createdAt': FieldValue.serverTimestamp(),
         'likes': 0,
+        'likedBy': [], // Initialize empty array for tracking user likes
         'createdBy': user.uid,
         'createdByName': user.displayName ?? user.email ?? 'Anonymous',
       };
@@ -419,7 +477,10 @@ class FirebaseService {
         query = query.where('createdBy', isEqualTo: createdBy);
       }
 
-      query = query.orderBy('createdAt', descending: true);
+      // Only add orderBy if we don't have other where clauses to avoid index issues
+      if (device == null && difficulty == null && createdBy == null) {
+        query = query.orderBy('createdAt', descending: true);
+      }
 
       if (limit != null) {
         query = query.limit(limit);
@@ -554,10 +615,26 @@ class FirebaseService {
         }
 
         final guideData = guideDoc.data()!;
+        final List<dynamic> likedBy = guideData['likedBy'] ?? [];
         final currentLikes = guideData['likes'] ?? 0;
 
-        // Simply increment the likes count
-        transaction.update(guideRef, {'likes': currentLikes + 1});
+        bool isCurrentlyLiked = likedBy.contains(user.uid);
+
+        if (isCurrentlyLiked) {
+          // Unlike: remove user from likedBy and decrement likes
+          likedBy.remove(user.uid);
+          transaction.update(guideRef, {
+            'likedBy': likedBy,
+            'likes': currentLikes > 0 ? currentLikes - 1 : 0,
+          });
+        } else {
+          // Like: add user to likedBy and increment likes
+          likedBy.add(user.uid);
+          transaction.update(guideRef, {
+            'likedBy': likedBy,
+            'likes': currentLikes + 1,
+          });
+        }
 
         return null; // Success
       });
@@ -565,6 +642,63 @@ class FirebaseService {
       return 'Firestore error: ${e.message}';
     } catch (e) {
       return 'Unexpected error: $e';
+    }
+  }
+
+  // Check if current user has liked a guide
+  Future<bool> hasUserLikedGuide(String guideId) async {
+    try {
+      final user = getCurrentUser();
+      if (user == null) {
+        return false;
+      }
+
+      final guideDoc =
+          await FirebaseFirestore.instance
+              .collection('guides')
+              .doc(guideId)
+              .get();
+
+      if (!guideDoc.exists) {
+        return false;
+      }
+
+      final guideData = guideDoc.data()!;
+      final List<dynamic> likedBy = guideData['likedBy'] ?? [];
+      return likedBy.contains(user.uid);
+    } catch (e) {
+      debugPrint('Error checking like status: $e');
+      return false;
+    }
+  }
+
+  // Get user's liked guides
+  Future<List<Map<String, dynamic>>> getUserLikedGuides() async {
+    try {
+      final user = getCurrentUser();
+      if (user == null) {
+        return [];
+      }
+
+      final querySnapshot =
+          await FirebaseFirestore.instance
+              .collection('guides')
+              .where('likedBy', arrayContains: user.uid)
+              .get();
+
+      debugPrint('Found ${querySnapshot.docs.length} liked guides for user ${user.uid}');
+      
+      final result = querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        debugPrint('Liked guide: ${data['title']} (ID: ${doc.id})');
+        return data;
+      }).toList();
+      
+      return result;
+    } catch (e) {
+      debugPrint('Error getting liked guides: $e');
+      return [];
     }
   }
 
@@ -600,26 +734,6 @@ class FirebaseService {
     }
   }
 
-  Future<void> addUserInfo(String email, String fullName) {
-    return FirebaseFirestore.instance.collection('users').doc(email).set({
-      'fullName': fullName,
-    });
-  }
-
-  Future<FirestoreUser?> getUserInfo() async {
-    DocumentSnapshot snapshot =
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(getCurrentUser()?.email)
-            .get();
-    if (snapshot.exists) {
-      final data = snapshot.data() as Map<String, dynamic>;
-      return FirestoreUser(id: snapshot.id, fullName: data['fullName'] ?? '');
-    } else {
-      return FirestoreUser(id: '', fullName: '');
-    }
-  }
-
   // Get current user's document from Firestore
   Future<Map<String, dynamic>?> getCurrentUserDocument() async {
     try {
@@ -628,24 +742,11 @@ class FirebaseService {
         return null;
       }
 
-      // Try with UID first (new structure)
+      // Get user document by UID
       DocumentSnapshot snapshot =
           await FirebaseFirestore.instance
               .collection('users')
               .doc(user.uid)
-              .get();
-
-      if (snapshot.exists) {
-        final data = snapshot.data() as Map<String, dynamic>;
-        data['id'] = snapshot.id;
-        return data;
-      }
-
-      // Fallback to email-based lookup (old structure)
-      snapshot =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.email)
               .get();
 
       if (snapshot.exists) {
@@ -683,31 +784,127 @@ class FirebaseService {
       if (photoURL != null) updateData['photoURL'] = photoURL;
       if (additionalData != null) updateData.addAll(additionalData);
 
-      // Try with UID first (new structure)
-      DocumentSnapshot snapshot =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .get();
-
-      if (snapshot.exists) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .update(updateData);
-      } else {
-        // Fallback to email-based (old structure)
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.email)
-            .update(updateData);
-      }
+      // Update user document by UID
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update(updateData);
 
       return null; // Success
     } on FirebaseException catch (e) {
       return 'Firestore error: ${e.message}';
     } catch (e) {
       return 'Unexpected error: $e';
+    }
+  }
+
+  // Update user's profile picture with base64 image
+  Future<String?> updateUserProfilePicture(String base64Image) async {
+    try {
+      final user = getCurrentUser();
+      if (user == null) {
+        return 'No user is currently signed in.';
+      }
+
+      // Update user document with base64 image
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
+        {'photoURL': base64Image, 'updatedAt': FieldValue.serverTimestamp()},
+      );
+
+      return null; // Success
+    } on FirebaseException catch (e) {
+      return 'Firestore error: ${e.message}';
+    } catch (e) {
+      return 'Unexpected error: $e';
+    }
+  }
+
+  // Get user's display name (username) from Google Sign-In or Firestore
+  String? getUserDisplayName() {
+    final user = getCurrentUser();
+    if (user == null) return null;
+
+    // First try to get from Firebase Auth user (works for Google Sign-In)
+    if (user.displayName != null && user.displayName!.isNotEmpty) {
+      return user.displayName;
+    }
+
+    // Fallback to email if no display name
+    return user.email;
+  }
+
+  // Get user's profile photo URL
+  String? getUserPhotoURL() {
+    final user = getCurrentUser();
+    return user?.photoURL;
+  }
+
+  // Get provider information (google, password, phone, etc.)
+  List<String> getUserProviders() {
+    final user = getCurrentUser();
+    if (user == null) return [];
+
+    return user.providerData.map((info) => info.providerId).toList();
+  }
+
+  // Check if user signed in with Google
+  bool isGoogleUser() {
+    return getUserProviders().contains('google.com');
+  }
+
+  // Update Firebase Auth user's display name and Firestore document
+  Future<String?> updateUserDisplayName(String displayName) async {
+    try {
+      final user = getCurrentUser();
+      if (user == null) {
+        return 'No user is currently signed in.';
+      }
+
+      // Update Firebase Auth user's display name
+      await user.updateDisplayName(displayName);
+
+      // Update Firestore document as well
+      final firestoreResult = await updateCurrentUserDocument(
+        displayName: displayName,
+        additionalData: {'fullName': displayName},
+      );
+
+      if (firestoreResult != null) {
+        return firestoreResult;
+      }
+
+      return null; // Success
+    } on FirebaseAuthException catch (e) {
+      return 'Auth error: ${e.message}';
+    } catch (e) {
+      return 'Unexpected error: $e';
+    }
+  }
+
+  // Create a new user document in Firestore (public method for link email screen)
+  Future<void> createUserDocument({
+    required String uid,
+    required String email,
+    required String displayName,
+    required String photoURL,
+  }) async {
+    try {
+      final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+
+      // Create new user document with all required fields
+      await userRef.set({
+        'email': email,
+        'displayName': displayName,
+        'fullName':
+            displayName, // Store as both displayName and fullName for consistency
+        'photoURL': photoURL,
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'provider': 'email', // Since this is for email linking
+      });
+    } catch (e) {
+      debugPrint('Error creating user document: $e');
+      rethrow; // Re-throw to handle in calling code
     }
   }
 }

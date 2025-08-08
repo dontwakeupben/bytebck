@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:byteback2/services/firebase_service.dart';
+import 'package:byteback2/services/image_service.dart';
 
 class CreateGuideScreen extends StatefulWidget {
   const CreateGuideScreen({super.key});
@@ -15,6 +16,28 @@ class _CreateGuideScreenState extends State<CreateGuideScreen> {
   String _selectedDevice = 'Desktop';
   String _selectedDifficulty = 'Easy';
   bool _isUploading = false;
+  String? _selectedImageBase64; // Store the selected image as base64
+
+  // Method to select an image
+  Future<void> _selectImage() async {
+    try {
+      final base64Image = await ImageService.pickGuideImage(context);
+      if (base64Image != null) {
+        setState(() {
+          _selectedImageBase64 = base64Image;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error selecting image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   // Show confirmation dialog
   void _showUploadConfirmation() {
@@ -97,7 +120,8 @@ class _CreateGuideScreenState extends State<CreateGuideScreen> {
                             title: _titleController.text.trim(),
                             description: _descController.text.trim(),
                             imageUrl:
-                                'https://via.placeholder.com/300x200', // Placeholder for now
+                                _selectedImageBase64 ??
+                                'https://via.placeholder.com/300x200', // Use selected image or placeholder
                             device: _selectedDevice.toLowerCase(),
                             difficulty: _selectedDifficulty.toLowerCase(),
                           );
@@ -199,202 +223,279 @@ class _CreateGuideScreenState extends State<CreateGuideScreen> {
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Text(
-                          'Title : ',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            fontFamily: 'CenturyGo',
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.only(left: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFB6B09C),
-                              borderRadius: BorderRadius.circular(10),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Title : ',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              fontFamily: 'CenturyGo',
                             ),
-                            child: TextField(
-                              controller: _titleController,
-                              style: const TextStyle(fontFamily: 'CenturyGo'),
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                hintText: 'How to fit a M.2 SSD',
+                          ),
+                          Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.only(left: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFB6B09C),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: TextField(
+                                controller: _titleController,
+                                style: const TextStyle(fontFamily: 'CenturyGo'),
+                                decoration: const InputDecoration(
+                                  border: InputBorder.none,
+                                  hintText: 'How to fit a M.2 SSD',
+                                ),
                               ),
                             ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Image:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          fontFamily: 'CenturyGo',
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Image:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            fontFamily: 'CenturyGo',
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Image preview and upload section
+                      if (_selectedImageBase64 != null)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          child: Column(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: ImageService.base64ToImage(
+                                  _selectedImageBase64,
+                                  width: double.infinity,
+                                  height: 200,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: _selectImage,
+                                    icon: const Icon(
+                                      Icons.edit,
+                                      color: Color(0xFF233C23),
+                                    ),
+                                    label: const Text(
+                                      'Change Image',
+                                      style: TextStyle(
+                                        fontFamily: 'CenturyGo',
+                                        color: Color(0xFF233C23),
+                                      ),
+                                    ),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      setState(() {
+                                        _selectedImageBase64 = null;
+                                      });
+                                    },
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.red,
+                                    ),
+                                    label: const Text(
+                                      'Remove Image',
+                                      style: TextStyle(
+                                        fontFamily: 'CenturyGo',
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 8),
+                        )
+                      else
                         GestureDetector(
-                          onTap: () {
-                            // TODO: Add image picker logic
-                          },
+                          onTap: _selectImage,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
+                            width: double.infinity,
+                            height: 120,
                             decoration: BoxDecoration(
                               color: const Color(0xFFB6B09C),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Text(
-                              'Add Photo(s)',
-                              style: TextStyle(
-                                fontFamily: 'CenturyGo',
-                                fontSize: 16,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFF233C23),
+                                style: BorderStyle.solid,
+                                width: 2,
                               ),
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Description:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        fontFamily: 'CenturyGo',
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: 220,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFB6B09C),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _descController,
-                        maxLines: null,
-                        expands: true,
-                        style: const TextStyle(fontFamily: 'CenturyGo'),
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.all(12),
-                          hintText: 'Blah blah blah...',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        const Text(
-                          'Device:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            fontFamily: 'CenturyGo',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: Color(0xFFB6B09C),
-                              borderRadius: BorderRadius.circular(10),
+                            child: const Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.add_photo_alternate,
+                                  size: 48,
+                                  color: Color(0xFF233C23),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Tap to add image',
+                                  style: TextStyle(
+                                    fontFamily: 'CenturyGo',
+                                    fontSize: 16,
+                                    color: Color(0xFF233C23),
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _selectedDevice,
-                                isExpanded: true,
-                                items:
-                                    ['Desktop', 'Laptop']
-                                        .map(
-                                          (device) => DropdownMenuItem(
-                                            value: device,
-                                            child: Text(
-                                              device,
-                                              style: TextStyle(
-                                                fontFamily: 'CenturyGo',
+                          ),
+                        ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Description:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          fontFamily: 'CenturyGo',
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        height: 220,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFB6B09C),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: TextField(
+                          controller: _descController,
+                          maxLines: null,
+                          expands: true,
+                          style: const TextStyle(fontFamily: 'CenturyGo'),
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.all(12),
+                            hintText: 'Blah blah blah...',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          const Text(
+                            'Device:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              fontFamily: 'CenturyGo',
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Color(0xFFB6B09C),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: _selectedDevice,
+                                  isExpanded: true,
+                                  items:
+                                      ['Desktop', 'Laptop']
+                                          .map(
+                                            (device) => DropdownMenuItem(
+                                              value: device,
+                                              child: Text(
+                                                device,
+                                                style: TextStyle(
+                                                  fontFamily: 'CenturyGo',
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        )
-                                        .toList(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedDevice = value!;
-                                  });
-                                },
+                                          )
+                                          .toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedDevice = value!;
+                                    });
+                                  },
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        const Text(
-                          'Difficulty:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            fontFamily: 'CenturyGo',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: Color(0xFFB6B09C),
-                              borderRadius: BorderRadius.circular(10),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          const Text(
+                            'Difficulty:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              fontFamily: 'CenturyGo',
                             ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _selectedDifficulty,
-                                isExpanded: true,
-                                items:
-                                    ['Easy', 'Medium', 'Hard']
-                                        .map(
-                                          (diff) => DropdownMenuItem(
-                                            value: diff,
-                                            child: Text(
-                                              diff,
-                                              style: TextStyle(
-                                                fontFamily: 'CenturyGo',
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Color(0xFFB6B09C),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: _selectedDifficulty,
+                                  isExpanded: true,
+                                  items:
+                                      ['Easy', 'Medium', 'Hard']
+                                          .map(
+                                            (diff) => DropdownMenuItem(
+                                              value: diff,
+                                              child: Text(
+                                                diff,
+                                                style: TextStyle(
+                                                  fontFamily: 'CenturyGo',
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        )
-                                        .toList(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedDifficulty = value!;
-                                  });
-                                },
+                                          )
+                                          .toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedDifficulty = value!;
+                                    });
+                                  },
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      // Extra space for the floating button
+                      const SizedBox(height: 80),
+                    ],
+                  ),
                 ),
               ),
             ),

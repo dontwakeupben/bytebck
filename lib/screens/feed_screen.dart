@@ -1,28 +1,59 @@
 import 'package:byteback2/models/Guide.dart';
 import 'package:byteback2/widgets/custom_bot_nav.dart';
 import 'package:byteback2/widgets/guide_card.dart';
-import 'package:byteback2/data/guide_data.dart';
+import 'package:byteback2/services/guide_service.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class FeedScreen extends StatefulWidget {
   final String? initialDevice;
+  final bool showBottomNav;
 
-  const FeedScreen({super.key, this.initialDevice});
+  const FeedScreen({super.key, this.initialDevice, this.showBottomNav = true});
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
 }
 
 class _FeedScreenState extends State<FeedScreen> {
+  final GuideService _guideService = GetIt.instance<GuideService>();
   String? selectedPlatform;
   List<String> selectedDifficulties = [];
   String? selectedSort;
+  List<Guide> _guides = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     // Initialize the selected platform with the initial device if provided from the home screen
     super.initState();
     selectedPlatform = widget.initialDevice;
+    _loadGuides();
+  }
+
+  Future<void> _loadGuides() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final guides = await _guideService.getAllGuides();
+      setState(() {
+        _guides = guides;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Error loading guides: $e');
+    }
+  }
+
+  // Refresh function for pull-to-refresh
+  Future<void> _refreshPage() async {
+    // Refresh the guide data from Firestore
+    await _loadGuides();
   }
 
   void _showFilterMenu() {
@@ -264,7 +295,7 @@ class _FeedScreenState extends State<FeedScreen> {
   List<Guide> get filteredGuides {
     // Filters the list of guides based on selected criteria
     // Returns a list of guides that match the selected platform and difficulties
-    return GuideData.guides.where((guide) {
+    return _guides.where((guide) {
       bool matchesPlatform =
           selectedPlatform == null || guide.device == selectedPlatform;
       bool matchesDifficulty =
@@ -341,6 +372,23 @@ class _FeedScreenState extends State<FeedScreen> {
                   ),
                   const SizedBox(width: 10),
                   GestureDetector(
+                    onTap: () => Navigator.of(context).pushNamed('/search'),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8F5E3),
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: const Icon(
+                        Icons.search_outlined,
+                        color: Color(0xFF233C23),
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
                     onTap: _showFilterMenu,
                     child: Container(
                       width: 44,
@@ -370,24 +418,31 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                itemCount: filteredGuides.length,
-                itemBuilder: (context, index) {
-                  final guide = filteredGuides[index];
-                  return GuideCard(
-                    title: guide.title,
-                    subtitle: guide.subtitle,
-                    image: guide.image,
-                    difficulty: guide.difficulty,
-                    device: guide.device,
-                    createdBy: guide.createdBy,
-                    isMine: guide.isMine,
-                  );
-                },
+              child: RefreshIndicator(
+                onRefresh: _refreshPage,
+                color: const Color(0xFF233C23),
+                backgroundColor: const Color(0xFFF8F5E3),
+                child:
+                    _isLoading
+                        ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFF8F5E3),
+                          ),
+                        )
+                        : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          itemCount: filteredGuides.length,
+                          itemBuilder: (context, index) {
+                            final guide = filteredGuides[index];
+                            return GuideCard(
+                              guide: guide,
+                              onUpdate: _loadGuides,
+                            );
+                          },
+                        ),
               ),
             ),
-            CustomBottomNav(currentIndex: 1),
+            if (widget.showBottomNav) CustomBottomNav(currentIndex: 1),
           ],
         ),
       ),

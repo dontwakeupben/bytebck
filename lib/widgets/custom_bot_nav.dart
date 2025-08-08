@@ -16,17 +16,17 @@ class CustomBottomNav extends StatelessWidget {
           NavIcon(
             icon: Icons.home,
             selected: currentIndex == 0,
-            onTap: () => Navigator.pushReplacementNamed(context, '/home'),
+            onTap: () => Navigator.pushReplacementNamed(context, '/main'),
           ),
           NavIcon(
             icon: Icons.search,
             selected: currentIndex == 1,
-            onTap: () => Navigator.pushReplacementNamed(context, '/feed'),
+            onTap: () => Navigator.pushReplacementNamed(context, '/main'),
           ),
           NavIcon(
             icon: Icons.menu,
             selected: currentIndex == 2,
-            onTap: () => Navigator.pushReplacementNamed(context, '/library'),
+            onTap: () => Navigator.pushReplacementNamed(context, '/main'),
           ),
         ],
       ),

@@ -21,7 +21,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
-  final FirebaseService _firebaseService = FirebaseService();
 
   void register(context) async {
     bool isValid = _formKey.currentState!.validate();
@@ -38,14 +37,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       } else {
         try {
-          await fbService.register(
+          final userCredential = await fbService.register(
             _emailController.text.trim(),
             _passwordController.text.trim(),
           );
-          await fbService.addUserInfo(
-            _emailController.text.trim(),
-            _nameController.text.trim(),
-          );
+
+          // Create user document in Firestore using the new method
+          if (userCredential.user != null) {
+            await fbService.createUserDocument(
+              uid: userCredential.user!.uid,
+              email: _emailController.text.trim(),
+              displayName: _nameController.text.trim(),
+              photoURL: '', // No photo URL for email registration
+            );
+          }
+
           FocusScope.of(context).unfocus();
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(

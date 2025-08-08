@@ -1,25 +1,120 @@
 import 'package:byteback2/models/Guide.dart';
 import 'package:byteback2/widgets/custom_bot_nav.dart';
 import 'package:byteback2/widgets/guide_card.dart';
-import 'package:byteback2/data/guide_data.dart';
+import 'package:byteback2/services/guide_service.dart';
 import 'package:flutter/material.dart';
+import 'package:get_it/get_it.dart';
 
 class LibraryScreen extends StatefulWidget {
-  const LibraryScreen({super.key});
+  final bool showBottomNav;
+
+  const LibraryScreen({super.key, this.showBottomNav = true});
 
   @override
   State<LibraryScreen> createState() => _LibraryScreenState();
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
+  final GuideService _guideService = GetIt.instance<GuideService>();
+  final TextEditingController _searchController = TextEditingController();
+
   // State class for LibraryScreen
   String? selectedPlatform;
   List<String> selectedDifficulties = [];
   String? selectedSort;
+  String _searchQuery = '';
+
+  List<Guide> _allGuides = [];
+  List<Guide> _userGuides = [];
+  List<Guide> _likedGuides = [];
+  List<Guide> _downloadedGuides = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGuides();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      _searchQuery = _searchController.text.toLowerCase();
+    });
+  }
+
+  // Filter guides based on search query
+  List<Guide> _filterGuidesBySearch(List<Guide> guides) {
+    if (_searchQuery.isEmpty) return guides;
+
+    return guides.where((guide) {
+      return guide.title.toLowerCase().contains(_searchQuery) ||
+          guide.subtitle.toLowerCase().contains(_searchQuery) ||
+          guide.createdBy.toLowerCase().contains(_searchQuery);
+    }).toList();
+  }
+
+  Future<void> _loadGuides() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Load all different types of guides concurrently
+      final futures = await Future.wait([
+        _guideService.getAllGuides(),
+        _guideService.getCurrentUserGuides(),
+        _guideService.getLikedGuides(),
+        _guideService.getDownloadedGuides(),
+      ]);
+
+      setState(() {
+        _allGuides = futures[0];
+        _userGuides = futures[1];
+        _likedGuides = futures[2];
+        _downloadedGuides = futures[3];
+        _isLoading = false;
+      });
+
+      // Debug logging to track loaded guides
+      print(
+        'Library loaded: ${_allGuides.length} total, ${_userGuides.length} user guides, ${_likedGuides.length} liked guides, ${_downloadedGuides.length} downloaded guides',
+      );
+
+      // Additional debug for liked guides
+      if (_likedGuides.isNotEmpty) {
+        print('Liked guides details:');
+        for (final guide in _likedGuides) {
+          print(
+            '  - ${guide.title} (ID: ${guide.id}, Liked: ${guide.isLiked})',
+          );
+        }
+      } else {
+        print('No liked guides found for current user');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Error loading guides: $e');
+    }
+  }
+
+  // Refresh function for pull-to-refresh
+  Future<void> _refreshPage() async {
+    // Refresh the guide data from Firestore
+    await _loadGuides();
+  }
 
   List<Guide> get filteredGuides {
     // Filters guides based on selected criteria
-    return GuideData.guides.where((guide) {
+    return _allGuides.where((guide) {
       bool matchesPlatform =
           selectedPlatform == null || guide.device == selectedPlatform;
       bool matchesDifficulty =
@@ -319,8 +414,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           const SizedBox(width: 2),
                           Expanded(
                             child: TextField(
+                              controller: _searchController,
                               decoration: InputDecoration(
-                                hintText: 'Search parts, guides, fixes',
+                                hintText: 'Search your guides and liked guides',
                                 hintStyle: TextStyle(
                                   fontFamily: 'CenturyGo',
                                   color: Colors.black54,
@@ -353,87 +449,211 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                children: [
-                  const Text(
-                    'Your Guides',
-                    style: TextStyle(
-                      fontFamily: 'CenturyGo',
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ...filteredGuides // Display guides based on the selected filters
-                      .where(
-                        (guide) => guide.isMine,
-                      ) // Show only guides created by the user
-                      .map(
-                        // Map each guide to a GuideCard widget
-                        (guide) => GuideCard(
-                          title: guide.title,
-                          subtitle: guide.subtitle,
-                          image: guide.image,
-                          difficulty: guide.difficulty,
-                          device: guide.device,
-                          createdBy: guide.createdBy,
-                          isMine: guide.isMine,
-                        ),
-                      ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Liked Guides',
-                    style: TextStyle(
-                      fontFamily: 'CenturyGo',
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ...filteredGuides //
-                      .where((guide) => guide.isLiked)
-                      .map(
-                        (guide) => GuideCard(
-                          title: guide.title,
-                          subtitle: guide.subtitle,
-                          image: guide.image,
-                          difficulty: guide.difficulty,
-                          device: guide.device,
-                          createdBy: guide.createdBy,
-                          isMine: guide.isMine,
-                        ),
-                      ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Downloaded Guides',
-                    style: TextStyle(
-                      fontFamily: 'CenturyGo',
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ...filteredGuides // Show guides that are downloaded
-                      .where((guide) => guide.isDownloaded)
-                      .map(
-                        (guide) => GuideCard(
-                          title: guide.title,
-                          subtitle: guide.subtitle,
-                          image: guide.image,
-                          difficulty: guide.difficulty,
-                          device: guide.device,
-                          createdBy: guide.createdBy,
-                          isMine: guide.isMine,
-                        ),
-                      ),
-                ],
-              ),
-            ),
-            CustomBottomNav(currentIndex: 2),
+              child: RefreshIndicator(
+                onRefresh: _refreshPage,
+                color: const Color(0xFF233C23),
+                backgroundColor: const Color(0xFFF8F5E3),
+                child:
+                    _isLoading
+                        ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFF8F5E3),
+                          ),
+                        )
+                        : ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          children: [
+                            const Text(
+                              'Your Guides',
+                              style: TextStyle(
+                                fontFamily: 'CenturyGo',
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            // Show user guides or empty message
+                            if (_userGuides.isEmpty)
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.add_circle_outline,
+                                      color: Colors.white70,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'No guides created yet. Create your first guide to help others!',
+                                        style: TextStyle(
+                                          fontFamily: 'CenturyGo',
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              ..._filterGuidesBySearch(
+                                    _userGuides,
+                                  ) // Display guides created by the user
+                                  .where((guide) {
+                                    bool matchesPlatform =
+                                        selectedPlatform == null ||
+                                        guide.device == selectedPlatform;
+                                    bool matchesDifficulty =
+                                        selectedDifficulties.isEmpty ||
+                                        selectedDifficulties.contains(
+                                          guide.difficulty,
+                                        );
+                                    return matchesPlatform && matchesDifficulty;
+                                  })
+                                  .map(
+                                    // Map each guide to a GuideCard widget
+                                    (guide) => GuideCard(
+                                      guide: guide,
+                                      onUpdate: _loadGuides,
+                                    ),
+                                  ),
+                            const SizedBox(height: 24),
+                            const Text(
+                              'Liked Guides',
+                              style: TextStyle(
+                                fontFamily: 'CenturyGo',
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            // Show liked guides or empty message
+                            if (_likedGuides.isEmpty)
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.favorite_border,
+                                      color: Colors.white70,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'No liked guides yet. Like guides from the detail view to see them here!',
+                                        style: TextStyle(
+                                          fontFamily: 'CenturyGo',
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              ..._filterGuidesBySearch(
+                                    _likedGuides,
+                                  ) // Display liked guides
+                                  .where((guide) {
+                                    bool matchesPlatform =
+                                        selectedPlatform == null ||
+                                        guide.device == selectedPlatform;
+                                    bool matchesDifficulty =
+                                        selectedDifficulties.isEmpty ||
+                                        selectedDifficulties.contains(
+                                          guide.difficulty,
+                                        );
+                                    return matchesPlatform && matchesDifficulty;
+                                  })
+                                  .map(
+                                    (guide) => GuideCard(
+                                      guide: guide,
+                                      onUpdate: _loadGuides,
+                                    ),
+                                  ),
+                            const SizedBox(height: 24),
+                            const Text(
+                              'Downloaded Guides',
+                              style: TextStyle(
+                                fontFamily: 'CenturyGo',
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            // Show downloaded guides or empty message
+                            if (_downloadedGuides.isEmpty)
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                margin: const EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.download_outlined,
+                                      color: Colors.white70,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'No downloaded guides yet. Download guides for offline access!',
+                                        style: TextStyle(
+                                          fontFamily: 'CenturyGo',
+                                          color: Colors.white70,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              ..._filterGuidesBySearch(
+                                    _downloadedGuides,
+                                  ) // Display downloaded guides
+                                  .where((guide) {
+                                    bool matchesPlatform =
+                                        selectedPlatform == null ||
+                                        guide.device == selectedPlatform;
+                                    bool matchesDifficulty =
+                                        selectedDifficulties.isEmpty ||
+                                        selectedDifficulties.contains(
+                                          guide.difficulty,
+                                        );
+                                    return matchesPlatform && matchesDifficulty;
+                                  })
+                                  .map(
+                                    (guide) => GuideCard(
+                                      guide: guide,
+                                      onUpdate: _loadGuides,
+                                    ),
+                                  ),
+                          ],
+                        ), // Close ListView
+              ), // Close RefreshIndicator
+            ), // Close Expanded
+            if (widget.showBottomNav) const CustomBottomNav(currentIndex: 2),
           ],
         ),
       ),

@@ -55,7 +55,7 @@ class _PhoneOtpState extends State<PhoneOtp> {
       if (FirebaseAuth.instance.currentUser?.email == null) {
         Navigator.pushReplacementNamed(context, '/link_email');
       } else {
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacementNamed(context, '/main');
       }
     } else {
       ScaffoldMessenger.of(

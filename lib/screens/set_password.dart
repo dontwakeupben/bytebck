@@ -27,7 +27,7 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
 
     try {
       await fbService.setPassword(_passwordController.text.trim());
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushReplacementNamed(context, '/main');
     } on FirebaseAuthException catch (e) {
       setState(() {
         _error = e.message;

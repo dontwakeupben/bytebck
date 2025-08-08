@@ -9,10 +9,7 @@ class GuideCard extends StatelessWidget {
   /// Complete Guide object containing all the guide data
   final Guide guide;
 
-  /// Optional callback to refresh the parent screen when returning from detail
-  final VoidCallback? onUpdate;
-
-  const GuideCard({super.key, required this.guide, this.onUpdate});
+  const GuideCard({super.key, required this.guide});
 
   /// Maps device types to their corresponding icons
   IconData get _deviceIcon {
@@ -96,19 +93,13 @@ class GuideCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () async {
-        await Navigator.push(
+      onTap: () {
+        Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => GuideDetailScreen(guide: guide, onUpdate: onUpdate),
+            builder: (context) => GuideDetailScreen(guide: guide),
           ),
         );
-
-        // If we have an onUpdate callback and the guide might have been modified,
-        // call it to refresh the parent screen
-        if (onUpdate != null) {
-          onUpdate!();
-        }
       },
       child: Stack(
         children: [

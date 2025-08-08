@@ -27,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text.trim(),
       );
 
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushReplacementNamed(context, '/main');
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       // Navigation needs to be delayed to ensure context is still mounted
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushNamed(context, hasPassword ? '/home' : '/set_password');
+        Navigator.pushNamed(context, hasPassword ? '/main' : '/set_password');
       });
     } on FirebaseAuthException catch (e) {
       if (!context.mounted) return;
