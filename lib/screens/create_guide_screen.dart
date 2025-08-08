@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:byteback2/services/firebase_service.dart';
 
 class CreateGuideScreen extends StatefulWidget {
   const CreateGuideScreen({super.key});
@@ -8,11 +9,12 @@ class CreateGuideScreen extends StatefulWidget {
 }
 
 class _CreateGuideScreenState extends State<CreateGuideScreen> {
+  final FirebaseService _firebaseService = FirebaseService();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
-  final List<ImageProvider> _images = [];
   String _selectedDevice = 'Desktop';
   String _selectedDifficulty = 'Easy';
+  bool _isUploading = false;
 
   // Show confirmation dialog
   void _showUploadConfirmation() {
@@ -81,23 +83,84 @@ class _CreateGuideScreenState extends State<CreateGuideScreen> {
               ),
             ),
             TextButton(
-              onPressed: () {
-                // TODO: Implement actual guide upload
-                Navigator.of(context).pop(); // Close dialog
-                Navigator.pop(context); // Return to previous screen
+              onPressed:
+                  _isUploading
+                      ? null
+                      : () async {
+                        setState(() {
+                          _isUploading = true;
+                        });
 
-                // Show success message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Guide uploaded successfully'),
-                    backgroundColor: Color(0xFF233C23),
-                  ),
-                );
-              },
-              child: const Text(
-                'Confirm',
-                style: TextStyle(fontFamily: 'CenturyGo', color: Colors.green),
-              ),
+                        try {
+                          // Create the guide card using FirebaseService
+                          final result = await _firebaseService.createGuideCard(
+                            title: _titleController.text.trim(),
+                            description: _descController.text.trim(),
+                            imageUrl:
+                                'https://via.placeholder.com/300x200', // Placeholder for now
+                            device: _selectedDevice.toLowerCase(),
+                            difficulty: _selectedDifficulty.toLowerCase(),
+                          );
+
+                          setState(() {
+                            _isUploading = false;
+                          });
+
+                          if (result == null) {
+                            // Success
+                            Navigator.of(context).pop(); // Close dialog
+                            Navigator.pop(context); // Return to previous screen
+
+                            // Show success message
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Guide uploaded successfully!'),
+                                backgroundColor: Color(0xFF233C23),
+                              ),
+                            );
+                          } else {
+                            // Error occurred
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Failed to upload guide: $result',
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setState(() {
+                            _isUploading = false;
+                          });
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      },
+              child:
+                  _isUploading
+                      ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.green,
+                          ),
+                        ),
+                      )
+                      : const Text(
+                        'Confirm',
+                        style: TextStyle(
+                          fontFamily: 'CenturyGo',
+                          color: Colors.green,
+                        ),
+                      ),
             ),
           ],
         );
@@ -368,6 +431,18 @@ class _CreateGuideScreenState extends State<CreateGuideScreen> {
                       );
                       return;
                     }
+
+                    // Check if user is signed in
+                    if (_firebaseService.getCurrentUser() == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please sign in to create a guide'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+
                     _showUploadConfirmation();
                   },
                   child: const Text(

@@ -77,18 +77,41 @@ class _HomeScreenState extends State<HomeScreen> {
                       return const Text("Hello Friend!");
                     }
 
-                    final email = user.email;
+                    return FutureBuilder<Map<String, dynamic>?>(
+                      future: fbService.getCurrentUserDocument(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Text(
+                            "Loading...",
+                            style: TextStyle(
+                              fontFamily: 'CenturyGo',
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          );
+                        }
 
-                    return FittedBox(
-                      child: Text(
-                        "Hello " + (email ?? "User") + "!",
-                        style: const TextStyle(
-                          fontFamily: 'CenturyGo',
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
+                        final userData = snapshot.data;
+                        final fullName =
+                            userData?['displayName'] ??
+                            userData?['fullName'] ??
+                            user.email ??
+                            "User";
+
+                        return FittedBox(
+                          child: Text(
+                            "Hello $fullName!",
+                            style: const TextStyle(
+                              fontFamily: 'CenturyGo',
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        );
+                      },
                     );
                   })(),
 

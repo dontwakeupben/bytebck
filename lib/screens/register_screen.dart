@@ -42,6 +42,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             _emailController.text.trim(),
             _passwordController.text.trim(),
           );
+          await fbService.addUserInfo(
+            _emailController.text.trim(),
+            _nameController.text.trim(),
+          );
           FocusScope.of(context).unfocus();
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
